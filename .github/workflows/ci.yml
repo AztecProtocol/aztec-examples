@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  merge_group:
+    branches: [ jz/add-ci-test ]
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          # Install aztec
+          NON_INTERACTIVE=1 bash -i <(curl -s https://install.aztec.network)
+          echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+
+      - name: Build contract
+        run: |
+          cd hello
+          make
+
+      - name: Run tests
+        run: |
+          cd hello
+          aztec test
