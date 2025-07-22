@@ -1,0 +1,30 @@
+{
+  "name": "scripts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "npx tsc",
+    "clean": "rimraf dist",
+    "start": "npm run clean && npm run build && node dist/scripts/src/index.js",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@aztec/accounts": "0.87.9",
+    "@aztec/aztec.js": "0.87.9",
+    "@aztec/bb.js": "0.87.9",
+    "@aztec/foundation": "0.87.9",
+    "@aztec/stdlib": "0.87.9",
+    "@noir-lang/noir_js": "1.0.0-beta.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "eslint": "^9.29.0",
+    "globals": "^16.2.0",
+    "rimraf": "^6.0.1",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.34.1"
+  }
+}

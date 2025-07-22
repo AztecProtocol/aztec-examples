@@ -1,0 +1,9 @@
+[package]
+name = "circuits"
+type = "bin"
+authors = [""]
+
+[dependencies]
+aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "v0.87.9", directory = "noir-projects/aztec-nr/aztec" }
+uint_note = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "v0.87.9", directory = "noir-projects/aztec-nr/uint-note" }
+poseidon = { tag = "v0.1.1", git = "https://github.com/noir-lang/poseidon" }
