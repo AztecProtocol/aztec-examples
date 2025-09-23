@@ -1,9 +1,5 @@
-import { GettingStartedContract } from '../artifacts/GettingStarted.js';
-import {
-  Fr,
-  createPXEClient,
-  waitForPXE,
-} from '@aztec/aztec.js';
+import { createPXEClient, waitForPXE } from '@aztec/aztec.js';
+import { StarterTokenContract } from '../artifacts/StarterToken.js';
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 
 const pxe = createPXEClient('http://localhost:8080');
@@ -11,10 +7,12 @@ await waitForPXE(pxe);
 
 const wallets = await getInitialTestAccountsWallets(pxe);
 const deployerWallet = wallets[0];
+const deployerAddress = deployerWallet.getAddress();
 
-const contractDeploymentSalt = Fr.random();
-const gettingStartedContract = await GettingStartedContract
+const starterTokenContract = await StarterTokenContract
   .deploy(deployerWallet)
-  .send({ contractAddressSalt: contractDeploymentSalt }).wait();
+  .send({
+    from: deployerAddress
+  }).wait();
 
-console.log('Contract Address', gettingStartedContract.contract.address);
+console.log(starterTokenContract.contract.address);
