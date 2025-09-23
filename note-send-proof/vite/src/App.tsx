@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { UltraHonkBackend } from "@aztec/bb.js";
 import circuit from "../../circuits/target/circuits.json" with { type: "json" };
-import { Noir, type CompiledCircuit } from "@noir-lang/noir_js";
+import { Noir, type CompiledCircuit } from "@aztec/noir-noir_js";
 import './App.css'
 
 interface GenerateProofInputs {

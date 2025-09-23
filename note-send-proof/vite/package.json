@@ -11,14 +11,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aztec/accounts": "^0.87.9",
-    "@aztec/aztec.js": "0.87.9",
-    "@aztec/bb.js": "0.87.9",
-    "@aztec/stdlib": "^0.87.9",
-    "@noir-lang/noir_js": "1.0.0-beta.7",
+    "@aztec/bb.js": "2.0.3",
+    "@aztec/noir-noir_js": "2.0.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "vite-plugin-node-polyfills": "^0.23.0"
+    "vite-plugin-node-polyfills": "^0.24.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

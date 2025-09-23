@@ -6,7 +6,7 @@ use dep::aztec::protocol_types::{
 use dep::aztec::note::note_interface::NoteHash;
 use dep::poseidon;
 
-use uint_note::uint_note::UintNote;
+use dep::uint_note::uint_note::UintNote;
 
 fn main(
     settled_note_hash: pub Field,
@@ -17,7 +17,7 @@ fn main(
     storage_slot: Field,
     note_nonce: Field,
 ) {
-    let note = UintNote { value, randomness, owner: AztecAddress::from_field(recipient) };
+    let note = UintNote::new_with_randomness(value, AztecAddress::from_field(recipient), randomness);
     let note_hash = note.compute_note_hash(storage_slot);
 
     let siloed_note_hash = poseidon::poseidon2::Poseidon2::hash([GENERATOR_INDEX__SILOED_NOTE_HASH as Field, contract_address, note_hash], 3);

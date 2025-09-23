@@ -1,9 +1,8 @@
 [package]
-name = "getting_started_contract"
-authors = [""]
-compiler_version = ">=1.0.0"
-type = "contract"
+name = "uint_note"
+authors = ["aztec-labs"]
+compiler_version = ">=0.18.0"
+type = "lib"
 
 [dependencies]
 aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "v2.0.3", directory = "noir-projects/aztec-nr/aztec" }
-uint_note = { path = "../uint-note" }

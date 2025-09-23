@@ -16,7 +16,7 @@ pub contract GettingStarted {
         },
     };
 
-    use uint_note::uint_note::UintNote;
+    use dep::uint_note::uint_note::UintNote;
 
     #[storage]
     struct Storage<Context> {
@@ -38,8 +38,8 @@ pub contract GettingStarted {
         let note_owner = context.msg_sender();
         storage.user_private_state.at(note_owner)
         // randomness should actually be random, but is a workaround because we can't recover it now
-            .insert(UintNote { value, owner: note_owner, randomness: 6969 })
-            .emit(encode_and_encrypt_note_unconstrained(&mut context, note_owner, note_owner));
+            .insert(UintNote::new_with_randomness(value, note_owner, 6969))
+            .emit(encode_and_encrypt_note_unconstrained(&mut context, note_owner));
     }
 
     #[public]
@@ -52,7 +52,7 @@ pub contract GettingStarted {
         let maybe_contract_owner = context.msg_sender();
 
         storage.contract_private_state.initialize_or_replace(UintNote::new(value, maybe_contract_owner))
-            .emit(encode_and_encrypt_note_unconstrained(&mut context, maybe_contract_owner, maybe_contract_owner));
+            .emit(encode_and_encrypt_note_unconstrained(&mut context, maybe_contract_owner));
 
         GettingStarted::at(context.this_address())._assert_is_owner(maybe_contract_owner).enqueue(&mut context);
     }

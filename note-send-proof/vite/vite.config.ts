@@ -7,6 +7,6 @@ export default defineConfig({
   plugins: [react(), nodePolyfills()],
   optimizeDeps: {
     include: ['pino', 'pino/browser'],
-    exclude: ['@noir-lang/noirc_abi', '@noir-lang/acvm_js', '@aztec/bb.js']
+    exclude: ['@aztec/noir-noirc_abi', '@aztec/noir-acvm_js', '@aztec/bb.js', '@aztec/noir-noir_js']
   },
 })

@@ -4,25 +4,23 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "npx tsc",
+    "build": "npx tsc && npm run copy-target-after-build",
     "clean": "rimraf dist",
-    "start": "npm run clean && npm run build && node dist/scripts/src/index.js",
-    "lint": "eslint ."
+    "start": "npm run clean && npm run build && node dist/src/index.js",
+    "lint": "eslint .",
+    "codegen": "aztec codegen -f ../sample-contract/target/getting_started_contract-GettingStarted.json && npm run copy-target",
+    "copy-target": "mkdir -p ./artifacts && cp -r ../sample-contract/target ./artifacts",
+    "copy-target-after-build": "cp -r ../sample-contract/target ./dist/artifacts"
   },
   "dependencies": {
-    "@aztec/accounts": "0.87.9",
-    "@aztec/aztec.js": "0.87.9",
-    "@aztec/bb.js": "0.87.9",
-    "@aztec/foundation": "0.87.9",
-    "@aztec/stdlib": "0.87.9",
-    "@noir-lang/noir_js": "1.0.0-beta.7"
+    "@aztec/accounts": "2.0.3",
+    "@aztec/aztec.js": "2.0.3",
+    "@aztec/foundation": "2.0.3",
+    "@aztec/stdlib": "2.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
     "eslint": "^9.29.0",
-    "globals": "^16.2.0",
     "rimraf": "^6.0.1",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.34.1"
