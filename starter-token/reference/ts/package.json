@@ -10,8 +10,8 @@
     "start": "npm run build && node dist/src/index.js"
   },
   "dependencies": {
-    "@aztec/accounts": "^1.2.0",
-    "@aztec/aztec.js": "^1.2.0"
+    "@aztec/accounts": "2.0.2",
+    "@aztec/aztec.js": "2.0.2"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
