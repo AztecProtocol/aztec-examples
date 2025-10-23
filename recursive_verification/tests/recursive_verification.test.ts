@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeAll } from "bun:test"
-import { AccountWalletWithSecretKey, Contract, createPXEClient, waitForPXE, type FieldLike, type PXE } from "@aztec/aztec.js"
+import { AccountWalletWithSecretKey, Contract, createPXEClient, waitForPXE, type FieldLike, type PXE, TxStatus } from "@aztec/aztec.js"
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing'
 import { ValueNotEqualContract, ValueNotEqualContractArtifact } from '../contract/artifacts/ValueNotEqual'
 import data from '../data.json'
@@ -62,7 +62,7 @@ describe("Recursive Verification", () => {
 
     expect(tx).toBeDefined()
     expect(tx.txHash).toBeDefined()
-    expect(tx.status).toBe("success")
+    expect(tx.status).toBe(TxStatus.SUCCESS)
 
     console.log(`Transaction hash: ${tx.txHash.toString()}`)
     console.log(`Transaction status: ${tx.status}`)
@@ -90,7 +90,7 @@ describe("Recursive Verification", () => {
 
     expect(tx).toBeDefined()
     expect(tx.txHash).toBeDefined()
-    expect(tx.status).toBe("success")
+    expect(tx.status).toBe(TxStatus.SUCCESS)
 
     // Check counter value is now 12
     const counterValue = await valueNotEqualContract.methods.get_counter(
