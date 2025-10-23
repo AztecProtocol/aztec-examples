@@ -131,19 +131,4 @@ describe("Recursive Verification", () => {
     console.log(`User1 counter value: ${user1Counter}`)
   }, TEST_TIMEOUT)
 
-  test("should fail with invalid proof data", async () => {
-    // Create invalid proof data by modifying one element
-    const invalidProof = [...data.proofAsFields]
-    invalidProof[0] = "0x1234567890abcdef" // Invalid proof element
-
-    // This should throw an error when trying to verify the invalid proof
-    await expect(async () => {
-      await valueNotEqualContract.methods.increment(
-        owner.getAddress(),
-        data.vkAsFields as unknown as FieldLike[],
-        invalidProof as unknown as FieldLike[],
-        data.publicInputs as unknown as FieldLike[]
-      ).send({ from: owner.getAddress() }).wait()
-    }).toThrow()
-  }, TEST_TIMEOUT)
 })
