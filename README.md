@@ -1,10 +1,16 @@
-# aztec-examples
+# Aztec Examples
 
 A collection of example Aztec smart contracts and circuits written in Noir, designed for hands-on learning of the Aztec privacy-first Layer 2 blockchain.
 
 ## Overview
 
 This repository contains practical examples demonstrating various features of Aztec's zero-knowledge smart contract platform, from basic token implementations to advanced proof verification patterns.
+
+You can find additional examples in the Aztec monorepo [docs examples folder](https://github.com/AztecProtocol/aztec-packages/tree/next/docs/examples), including:
+
+- Counter contract example
+- A simple token example
+- An NFT bridge contract example
 
 ## Examples
 
@@ -20,38 +26,13 @@ Demonstrates how to verify Noir circuit proofs within Aztec smart contracts usin
 - Integration between off-chain proving and on-chain verification
 
 **Key features**:
+
 - Circuit that proves two values are not equal (x ≠ y)
 - Smart contract that verifies proofs and maintains private counters
 - Comprehensive test suite and GitHub Actions CI/CD pipeline
 - TypeScript utilities for proof generation and contract deployment
 
 [View README](./recursive_verification/README.md)
-
-### 2. [Starter Token](./starter-token)
-
-**Aztec Version**: 2.0.2
-
-A beginner-friendly token contract implementation with both template and reference versions. Perfect for learning Aztec contract development from scratch.
-
-**Structure**:
-- `start-here/`: Template implementation for hands-on learning
-- `reference/`: Complete working implementation with all features
-- `external-call-contract/`: Example of cross-contract interactions
-
-**Key features**:
-- Public and private token balances
-- Minting and transfer functionality
-- Owner-based access control
-- Cross-contract communication patterns
-- TypeScript client integration
-
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) (v20+)
-- [Bun](https://bun.sh/) runtime (for recursive_verification example)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart)
-- Docker (for running Aztec sandbox)
-- 8GB+ RAM (recommended for proof generation)
 
 ## Quick Start
 
@@ -68,6 +49,7 @@ aztec-up 2.0.3
 ### Run the Examples
 
 #### Recursive Verification
+
 ```bash
 cd recursive_verification
 bun install
@@ -78,6 +60,7 @@ bun recursion   # Deploy and verify proof
 ```
 
 #### Starter Token
+
 ```bash
 cd starter-token/reference
 # Follow the specific setup instructions in the token example
@@ -93,9 +76,6 @@ aztec-examples/
 │   ├── scripts/               # TypeScript utilities
 │   ├── tests/                 # Integration test suite
 │   └── README.md             # Detailed documentation
-├── starter-token/              # Token contract examples
-│   ├── start-here/           # Template for learning
-│   └── reference/            # Complete implementation
 └── .github/                   # CI/CD workflows
     └── workflows/
         └── recursive-verification-tests.yml
@@ -154,6 +134,7 @@ bun test
 ## Contributing
 
 We welcome contributions! Please feel free to submit issues or pull requests with:
+
 - New example contracts
 - Improvements to existing examples
 - Documentation enhancements
