@@ -1,0 +1,26 @@
+{
+  "name": "bb_gen_proof_inputs",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "cli": "bun run cli.ts",
+    "ccc": "cd contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o artifacts",
+    "data": "bun run scripts/generate_data.ts",
+    "recursion": "bun run scripts/run_recursion.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@aztec/accounts": "2.0.3",
+    "@aztec/aztec.js": "2.0.3",
+    "@aztec/bb.js": "2.0.3",
+    "@aztec/noir-noir_js": "2.0.3",
+    "add": "^2.0.6"
+  }
+}

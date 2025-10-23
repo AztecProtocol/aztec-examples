@@ -1,0 +1,236 @@
+# Verify Noir Proof in Aztec Contracts
+
+A demonstration of verifying Noir circuit proofs within Aztec smart contracts using the UltraHonk proving system. This project showcases how to generate zero-knowledge proofs off-chain with Noir and verify them on-chain in an Aztec private smart contract.
+
+## Overview
+
+This project implements:
+
+- **Noir Circuit**: A simple circuit that proves two field elements are not equal (x ≠ y)
+- **Aztec Contract**: A private smart contract that verifies Noir proofs and maintains a counter
+- **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
+- **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
+
+**Aztec Version**: `2.0.3`
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) runtime (v1.0 or higher)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 2.0.3)
+- Linux/macOS (Windows users can use WSL2)
+- 8GB+ RAM recommended for proof generation
+
+## Project Structure
+
+```
+.
+├── circuit/              # Noir circuit that generates proofs
+│   ├── src/main.nr      # Circuit logic: proves x ≠ y
+│   └── Nargo.toml       # Circuit configuration
+├── contract/            # Aztec smart contract
+│   ├── src/main.nr     # Contract that verifies Noir proofs
+│   ├── artifacts/      # Generated TypeScript bindings
+│   └── Nargo.toml      # Contract configuration
+├── scripts/             # TypeScript utilities
+│   ├── generate_data.ts    # Generates proof, VK, and public inputs
+│   └── run_recursion.ts    # Deploys contract and verifies proof
+└── data.json           # Generated proof data (created by `bun data`)
+```
+
+## Installation
+
+### Install dependencies:
+
+```bash
+bun install
+```
+
+### Install Aztec CLI:
+
+```bash
+bash -i <(curl -s https://install.aztec.network)
+```
+
+### Set Aztec to the correct version:
+
+```bash
+aztec-up 2.0.3
+```
+
+This ensures compatibility with the contract dependencies.
+
+## Build & Compile
+
+### 1. Compile the Noir Circuit
+
+```bash
+cd circuit && aztec-nargo compile
+```
+
+This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` containing the circuit bytecode.
+
+### 2. Execute the Circuit (Optional)
+
+```bash
+cd circuit && nargo execute
+```
+
+Generates a witness for testing the circuit with default inputs (defined in `circuit/Prover.toml`).
+
+### 3. Compile the Aztec Contract
+
+```bash
+bun ccc
+```
+
+This command:
+
+- Compiles the Aztec contract (`contract/src/main.nr`)
+- Post-processes for Aztec deployment
+- Generates TypeScript bindings in `contract/artifacts/`
+
+## Generate Proof Data
+
+Generate the verification key, proof, and public inputs:
+
+```bash
+bun data
+```
+
+This runs `scripts/generate_data.ts` which:
+
+- Executes the circuit with inputs x=1, y=2
+- Generates an UltraHonk proof using Barretenberg
+- Saves proof data to `data.json` (457 field elements for proof, 115 for VK)
+
+## Deploy and Verify On-Chain
+
+### 1. Start Aztec Sandbox
+
+Start the local Aztec network:
+
+```bash
+aztec start --sandbox
+```
+
+Keep this running in a separate terminal. The sandbox runs at `http://localhost:8080`.
+
+### 2. Deploy Contract and Verify Proof
+
+```bash
+bun recursion
+```
+
+This runs `scripts/run_recursion.ts` which:
+
+- Connects to the Aztec PXE (Private eXecution Environment)
+- Deploys the `ValueNotEqual` contract
+- Submits the proof from `data.json` for on-chain verification
+- Increments the counter if verification succeeds
+- Displays the final counter value
+
+Expected output:
+
+```
+Contract Deployed at address 0x...
+Tx hash: 0x...
+Counter value: 11
+```
+
+## Complete Workflow
+
+For a fresh setup, run these commands in order:
+
+```bash
+# 1. Install dependencies
+bun install
+
+# 2. Setup Aztec
+aztec-up 2.0.3
+
+# 3. Compile circuit
+cd circuit && aztec-nargo compile && cd ..
+
+# 4. Compile contract
+bun ccc
+
+# 5. Generate proof data
+bun data
+
+# 6. Start sandbox (in a new terminal)
+aztec start --sandbox
+
+# 7. Deploy and verify (in original terminal)
+bun recursion
+```
+
+## Testing
+
+### Test the Circuit
+
+```bash
+cd circuit && nargo test
+```
+
+This runs the tests defined in `circuit/src/main.nr`. The test verifies that the circuit correctly proves x ≠ y.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Cannot find module './contract/artifacts/ValueNotEqual'"**
+
+   - Run `bun ccc` to generate the contract artifacts
+
+2. **"Cannot find module './data.json'"**
+
+   - Run `bun data` to generate the proof data
+
+3. **"Failed to connect to PXE"**
+
+   - Ensure the Aztec sandbox is running: `aztec start --sandbox`
+   - Check it's accessible at `http://localhost:8080`
+
+4. **"Proof verification failed"**
+
+   - Ensure you've run `bun data` after any circuit changes
+   - Verify the circuit was compiled with `cd circuit && aztec-nargo compile`
+
+5. **Memory issues during proof generation**
+   - The Barretenberg prover requires significant RAM
+   - Close other applications or use a machine with more memory
+
+### Clean Rebuild
+
+If you encounter issues, try a clean rebuild:
+
+```bash
+# Remove generated files
+rm -rf circuit/target contract/target contract/artifacts data.json
+
+# Rebuild everything
+cd circuit && aztec-nargo compile && cd ..
+bun ccc
+bun data
+```
+
+## How It Works
+
+1. **Circuit**: The Noir circuit in `circuit/src/main.nr` creates a zero-knowledge proof that two values are not equal
+2. **Proof Generation**: Barretenberg generates an UltraHonk proof from the circuit execution
+3. **Contract**: The Aztec contract uses `std::verify_proof_with_type` to verify the proof on-chain
+4. **Privacy**: The contract uses private state (`EasyPrivateUint`) to maintain counters secretly
+
+## Additional Scripts
+
+- `bun cli`: Run CLI interface (if `cli.ts` exists)
+- `bun data`: Manually generate proof data
+- `bun recursion`: Manually deploy and test
+
+## Resources
+
+- [Aztec Documentation](https://docs.aztec.network/)
+- [Noir Language Documentation](https://noir-lang.org/)
+- [Barretenberg Proving System](https://github.com/AztecProtocol/barretenberg)
+
+h/t @satyambnsal for the initial implementation.
