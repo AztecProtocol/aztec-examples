@@ -82,7 +82,14 @@ jobs:
 
       - name: Generate proof data
         working-directory: recursive_verification
-        run: bun data
+        env:
+          BB_SINGLE_THREADED: "1"
+          HARDWARE_CONCURRENCY: "1"
+          NODE_OPTIONS: "--max-old-space-size=6144"
+        run: |
+          echo "Generating proof data with memory optimizations..."
+          bun data
+        timeout-minutes: 30
 
       - name: Run tests
         working-directory: recursive_verification
