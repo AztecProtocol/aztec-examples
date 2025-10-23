@@ -34,7 +34,14 @@ This project implements:
 ├── scripts/             # TypeScript utilities
 │   ├── generate_data.ts    # Generates proof, VK, and public inputs
 │   └── run_recursion.ts    # Deploys contract and verifies proof
-└── data.json           # Generated proof data (created by `bun data`)
+├── tests/               # Integration tests
+│   └── recursive_verification.test.ts  # Comprehensive test suite
+├── CLAUDE.md           # Instructions for Claude AI assistants
+├── EXPLAINER.md        # Detailed technical explanation of the project
+├── package.json        # Node.js package configuration
+├── tsconfig.json       # TypeScript configuration
+├── data.json           # Generated proof data (created by `bun data`)
+└── run-tests.sh        # Local test runner script
 ```
 
 ## Installation
@@ -166,6 +173,21 @@ bun recursion
 
 ## Testing
 
+### Run All Tests
+
+The project includes a comprehensive test suite for contract deployment and proof verification:
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in watch mode for development
+bun test:watch
+
+# Run full test suite locally (includes compilation)
+./run-tests.sh
+```
+
 ### Test the Circuit
 
 ```bash
@@ -173,6 +195,14 @@ cd circuit && nargo test
 ```
 
 This runs the tests defined in `circuit/src/main.nr`. The test verifies that the circuit correctly proves x ≠ y.
+
+### Integration Tests
+
+The test suite (`tests/recursive_verification.test.ts`) includes:
+- Contract deployment verification
+- Proof verification and counter increment tests
+- Multi-user counter management
+- Multiple proof verification rounds
 
 ## Troubleshooting
 
@@ -200,6 +230,10 @@ This runs the tests defined in `circuit/src/main.nr`. The test verifies that the
    - The Barretenberg prover requires significant RAM
    - Close other applications or use a machine with more memory
 
+6. **TypeScript/Linting errors with TxStatus**
+   - Ensure you're importing `TxStatus` from `@aztec/aztec.js`
+   - Use `TxStatus.SUCCESS` instead of string literal `"success"`
+
 ### Clean Rebuild
 
 If you encounter issues, try a clean rebuild:
@@ -223,9 +257,12 @@ bun data
 
 ## Additional Scripts
 
-- `bun cli`: Run CLI interface (if `cli.ts` exists)
-- `bun data`: Manually generate proof data
-- `bun recursion`: Manually deploy and test
+- `bun ccc`: Compile contract and generate TypeScript artifacts
+- `bun data`: Generate proof data (verification key, proof, public inputs)
+- `bun recursion`: Deploy contract and verify proof on-chain
+- `bun test`: Run integration test suite
+- `bun test:watch`: Run tests in watch mode for development
+- `./run-tests.sh`: Run full test suite locally (includes compilation)
 
 ## Resources
 
