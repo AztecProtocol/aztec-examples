@@ -8,7 +8,7 @@ const helloWorld = new Noir(circuitJson as any)
 
 const { witness: mainWitness } = await helloWorld.execute({ x: 1, y: 2 })
 
-const mainBackend = new UltraHonkBackend(circuitJson.bytecode, { threads: 8 })
+const mainBackend = new UltraHonkBackend(circuitJson.bytecode, { threads: 1 })
 const mainProofData: ProofData = await mainBackend.generateProof(mainWitness)
 const mainVerificationKey = await mainBackend.getVerificationKey()
 
