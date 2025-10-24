@@ -12,6 +12,7 @@ const sponsoredFPC = await getSponsoredFPCInstance();
 const sponsoredPaymentMethod = new SponsoredFeePaymentMethod(sponsoredFPC.address);
 
 export const setupSandbox = async (): Promise<PXE> => {
+  
   try {
     const nodeUrl = 'http://localhost:8080';
     const node = await createAztecNodeClient(nodeUrl);

@@ -91,10 +91,10 @@ jobs:
           bun data
         timeout-minutes: 30
 
-      - name: Run tests
+      - name: Run recursive verification script
         working-directory: recursive_verification
-        run: bun test
-        timeout-minutes: 10
+        run: bun recursion
+        timeout-minutes: 15
 
       - name: Upload test results if failed
         if: failure()

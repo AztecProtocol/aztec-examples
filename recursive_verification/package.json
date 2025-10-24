@@ -3,11 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf store",
     "cli": "bun run cli.ts",
     "ccc": "cd contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o artifacts",
     "data": "bun run scripts/generate_data.ts",
     "recursion": "tsx scripts/run_recursion.ts",
-    "test": "bun test",
+    "test": "bun clean && bun test",
     "test:watch": "bun test --watch"
   },
   "devDependencies": {
