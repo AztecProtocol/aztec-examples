@@ -6,7 +6,7 @@
     "cli": "bun run cli.ts",
     "ccc": "cd contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o artifacts",
     "data": "bun run scripts/generate_data.ts",
-    "recursion": "bun run scripts/run_recursion.ts",
+    "recursion": "tsx scripts/run_recursion.ts",
     "test": "bun test",
     "test:watch": "bun test --watch"
   },
@@ -20,7 +20,11 @@
     "@aztec/accounts": "2.0.3",
     "@aztec/aztec.js": "2.0.3",
     "@aztec/bb.js": "2.0.3",
+    "@aztec/kv-store": "^2.0.3",
+    "@aztec/noir-contracts.js": "^2.0.3",
     "@aztec/noir-noir_js": "2.0.3",
-    "add": "^2.0.6"
+    "@aztec/pxe": "^2.0.3",
+    "add": "^2.0.6",
+    "tsx": "^4.20.6"
   }
 }

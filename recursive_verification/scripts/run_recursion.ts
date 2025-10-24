@@ -1,68 +1,75 @@
-import { AccountWalletWithSecretKey, Contract, createPXEClient, waitForPXE, type FieldLike, type PXE } from "@aztec/aztec.js"
-
+import { AccountWalletWithSecretKey, Contract, createAztecNodeClient, Fq, Fr, SponsoredFeePaymentMethod, waitForPXE, type FieldLike, type PXE } from "@aztec/aztec.js"
+import { getSponsoredFPCInstance } from "./sponsored_fpc.js";
+import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC";
 export const PXE_URL = 'http://localhost:8080'
-import { getInitialTestAccountsWallets } from '@aztec/accounts/testing'
 import { ValueNotEqualContract, ValueNotEqualContractArtifact } from '../contract/artifacts/ValueNotEqual'
 import data from '../data.json'
+import { createPXEService, getPXEServiceConfig } from "@aztec/pxe/server"
+import { createStore } from "@aztec/kv-store/lmdb"
+import { getSchnorrAccount } from "@aztec/accounts/schnorr"
+
+const sponsoredFPC = await getSponsoredFPCInstance();
+const sponsoredPaymentMethod = new SponsoredFeePaymentMethod(sponsoredFPC.address);
 
 export const setupSandbox = async (): Promise<PXE> => {
   try {
-    console.log(`Setting up sandbox with PXE URL: ${PXE_URL}`)
-    const pxe = await createPXEClient(PXE_URL)
-    await waitForPXE(pxe)
-    console.log('PXE client created and connected successfully')
-    return pxe
+    const nodeUrl = 'http://localhost:8080';
+    const node = await createAztecNodeClient(nodeUrl);
+    
+    try {
+        await node.getNodeInfo();
+    } catch (error) {
+        throw new Error(`Cannot connect to node at ${nodeUrl}. ${nodeUrl.includes('localhost') ? 'Please run: aztec start --sandbox' : 'Check your connection.'}`);
+    }
+
+    const l1Contracts = await node.getL1ContractAddresses();
+    const config = getPXEServiceConfig();
+    const fullConfig = { 
+        ...config, 
+        l1Contracts, 
+        proverEnabled: true 
+    };
+
+    const store = await createStore('recursive_verification', {
+      dataDirectory: 'store',
+      dataStoreMapSizeKB: 1e6,
+    });
+
+    const pxe = await createPXEService(node, fullConfig, { store });
+    await waitForPXE(pxe);
+    await pxe.registerContract({ instance: sponsoredFPC, artifact: SponsoredFPCContract.artifact });
+    
+    return pxe;
   } catch (error) {
     console.error('Failed to setup sandbox:', error)
     throw error
   }
 }
-export interface TestWallets {
-  owner: AccountWalletWithSecretKey
-  user1: AccountWalletWithSecretKey
-  user2: AccountWalletWithSecretKey
-  user3: AccountWalletWithSecretKey
-}
 
-export const setupWallets = async (pxe: PXE): Promise<TestWallets> => {
-  try {
-    console.log('Setting up test wallets')
-    const wallets = await getInitialTestAccountsWallets(pxe)
-
-    const testWallets: TestWallets = {
-      owner: wallets[0],
-      user1: wallets[1],
-      user2: wallets[2],
-      //? Here wallet[3] is always coming wallets[0], so please keep this in mind
-      user3: wallets[3] || wallets[0], // Fallback if not enough wallets
-    }
-
-    console.log('Test wallets configured')
-    console.info('Owner address:', testWallets.owner.getAddress().toString())
-    console.info('User1 address:', testWallets.user1.getAddress().toString())
-    console.info('User2 address:', testWallets.user2.getAddress().toString())
-
-    return testWallets
-  } catch (error) {
-    console.error('Failed to setup wallets:', error)
-    throw error
-  }
+export async function deployWallet(pxe: PXE): Promise<AccountWalletWithSecretKey> {
+  let secretKey = Fr.random();
+  let signingKey = Fq.random();
+  let salt = Fr.random();
+  let schnorrAccount = await getSchnorrAccount(pxe, secretKey, signingKey, salt);
+  let tx = await schnorrAccount.deploy({ fee: { paymentMethod: sponsoredPaymentMethod } }).wait({ timeout: 120000 });
+  let wallet = await schnorrAccount.getWallet();
+  return wallet
 }
 
 async function main() {
   const pxe = await setupSandbox();
-  const wallets = await setupWallets(pxe)
+  const wallet = await deployWallet(pxe)
 
-  const valueNotEqual = await Contract.deploy(wallets.owner, ValueNotEqualContractArtifact, [
-    10, wallets.owner.getAddress()
-  ], 'initialize').send({ from: wallets.owner.getAddress() }).deployed() as ValueNotEqualContract
+  const valueNotEqual = await Contract.deploy(wallet, ValueNotEqualContractArtifact, [
+    10, wallet.getAddress()
+  ], 'initialize').send({ from: wallet.getAddress(), fee: { paymentMethod: sponsoredPaymentMethod } }).deployed() as ValueNotEqualContract
 
   console.log("Contract Deployed at address", valueNotEqual.address.toString())
 
-  const tx = await valueNotEqual.methods.increment(wallets.owner.getAddress(), data.vkAsFields as unknown as FieldLike[], data.proofAsFields as unknown as FieldLike[], data.publicInputs as unknown as FieldLike[]).send({ from: wallets.owner.getAddress() }).wait()
+  const tx = await valueNotEqual.methods.increment(wallet.getAddress(), data.vkAsFields as unknown as FieldLike[], data.proofAsFields as unknown as FieldLike[], data.publicInputs as unknown as FieldLike[]).send({ from: wallet.getAddress(), fee: { paymentMethod: sponsoredPaymentMethod } }).wait()
 
   console.log(`Tx hash: ${tx.txHash.toString()}`)
-  const counterValue = await valueNotEqual.methods.get_counter(wallets.owner.getAddress()).simulate({ from: wallets.owner.getAddress() })
+  const counterValue = await valueNotEqual.methods.get_counter(wallet.getAddress()).simulate({ from: wallet.getAddress() })
   console.log(`Counter value: ${counterValue}`)
 }
 

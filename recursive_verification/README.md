@@ -76,10 +76,10 @@ cd circuit && aztec-nargo compile
 
 This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` containing the circuit bytecode.
 
-### 2. Execute the Circuit (Optional)
+### 2. Execute the Circuit
 
 ```bash
-cd circuit && nargo execute
+cd circuit && aztec-nargo execute
 ```
 
 Generates a witness for testing the circuit with default inputs (defined in `circuit/Prover.toml`).
