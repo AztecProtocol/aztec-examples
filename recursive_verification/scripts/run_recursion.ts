@@ -1,76 +1,53 @@
-import { AccountWalletWithSecretKey, Contract, createAztecNodeClient, Fq, Fr, SponsoredFeePaymentMethod, waitForPXE, type FieldLike, type PXE } from "@aztec/aztec.js"
+import { Contract } from "@aztec/aztec.js/contracts"
+import { createAztecNodeClient } from "@aztec/aztec.js/node"
+import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
+import type { FieldLike } from "@aztec/aztec.js/abi"
 import { getSponsoredFPCInstance } from "./sponsored_fpc.js";
 import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC";
 export const PXE_URL = 'http://localhost:8080'
 import { ValueNotEqualContract, ValueNotEqualContractArtifact } from '../contract/artifacts/ValueNotEqual'
 import data from '../data.json'
-import { createPXEService, getPXEServiceConfig } from "@aztec/pxe/server"
-import { createStore } from "@aztec/kv-store/lmdb"
-import { getSchnorrAccount } from "@aztec/accounts/schnorr"
+import { getPXEConfig } from "@aztec/pxe/config"
+import { TestWallet } from '@aztec/test-wallet/server';
+import { AztecAddress } from "@aztec/aztec.js/addresses"
 
 const sponsoredFPC = await getSponsoredFPCInstance();
 const sponsoredPaymentMethod = new SponsoredFeePaymentMethod(sponsoredFPC.address);
 
-export const setupSandbox = async (): Promise<PXE> => {
-  
+export const setupSandbox = async (): Promise<TestWallet> => {
+
   try {
     const nodeUrl = 'http://localhost:8080';
-    const node = await createAztecNodeClient(nodeUrl);
-    
-    try {
-        await node.getNodeInfo();
-    } catch (error) {
-        throw new Error(`Cannot connect to node at ${nodeUrl}. ${nodeUrl.includes('localhost') ? 'Please run: aztec start --sandbox' : 'Check your connection.'}`);
-    }
+    const aztecNode = await createAztecNodeClient(nodeUrl);
+    const config = getPXEConfig();
+    config.dataDirectory = 'pxe';
+    config.proverEnabled = true;
+    let wallet = await TestWallet.create(aztecNode, config);
+    await wallet.registerContract({ instance: sponsoredFPC, artifact: SponsoredFPCContract.artifact });
 
-    const l1Contracts = await node.getL1ContractAddresses();
-    const config = getPXEServiceConfig();
-    const fullConfig = { 
-        ...config, 
-        l1Contracts, 
-        proverEnabled: true 
-    };
-
-    const store = await createStore('recursive_verification', {
-      dataDirectory: 'store',
-      dataStoreMapSizeKB: 1e6,
-    });
-
-    const pxe = await createPXEService(node, fullConfig, { store });
-    await waitForPXE(pxe);
-    await pxe.registerContract({ instance: sponsoredFPC, artifact: SponsoredFPCContract.artifact });
-    
-    return pxe;
+    return wallet;
   } catch (error) {
     console.error('Failed to setup sandbox:', error)
     throw error
   }
 }
 
-export async function deployWallet(pxe: PXE): Promise<AccountWalletWithSecretKey> {
-  let secretKey = Fr.random();
-  let signingKey = Fq.random();
-  let salt = Fr.random();
-  let schnorrAccount = await getSchnorrAccount(pxe, secretKey, signingKey, salt);
-  let tx = await schnorrAccount.deploy({ fee: { paymentMethod: sponsoredPaymentMethod } }).wait({ timeout: 120000 });
-  let wallet = await schnorrAccount.getWallet();
-  return wallet
-}
 
 async function main() {
-  const pxe = await setupSandbox();
-  const wallet = await deployWallet(pxe)
+  const testWallet = await setupSandbox();
+  const account = await testWallet.createAccount();
+  const manager = await account.getDeployMethod();
+  await manager.send({ from: AztecAddress.ZERO, fee: { paymentMethod: sponsoredPaymentMethod } }).deployed()
+  const accounts = await testWallet.getAccounts();
 
-  const valueNotEqual = await Contract.deploy(wallet, ValueNotEqualContractArtifact, [
-    10, wallet.getAddress()
-  ], 'initialize').send({ from: wallet.getAddress(), fee: { paymentMethod: sponsoredPaymentMethod } }).deployed() as ValueNotEqualContract
+  const valueNotEqual = await Contract.deploy(testWallet, ValueNotEqualContractArtifact, [
+    10, accounts[0].item
+  ], 'initialize').send({ from: accounts[0].item, fee: { paymentMethod: sponsoredPaymentMethod } }).deployed() as ValueNotEqualContract
 
-  console.log("Contract Deployed at address", valueNotEqual.address.toString())
-
-  const tx = await valueNotEqual.methods.increment(wallet.getAddress(), data.vkAsFields as unknown as FieldLike[], data.proofAsFields as unknown as FieldLike[], data.publicInputs as unknown as FieldLike[]).send({ from: wallet.getAddress(), fee: { paymentMethod: sponsoredPaymentMethod } }).wait()
+  const tx = await valueNotEqual.methods.increment(accounts[0].item, data.vkAsFields as unknown as FieldLike[], data.proofAsFields as unknown as FieldLike[], data.publicInputs as unknown as FieldLike[]).send({ from: accounts[0].item, fee: { paymentMethod: sponsoredPaymentMethod } }).wait()
 
   console.log(`Tx hash: ${tx.txHash.toString()}`)
-  const counterValue = await valueNotEqual.methods.get_counter(wallet.getAddress()).simulate({ from: wallet.getAddress() })
+  const counterValue = await valueNotEqual.methods.get_counter(accounts[0].item).simulate({ from: accounts[0].item })
   console.log(`Counter value: ${counterValue}`)
 }
 

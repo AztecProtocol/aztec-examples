@@ -18,13 +18,14 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@aztec/accounts": "2.0.3",
-    "@aztec/aztec.js": "2.0.3",
-    "@aztec/bb.js": "2.0.3",
-    "@aztec/kv-store": "^2.0.3",
-    "@aztec/noir-contracts.js": "^2.0.3",
-    "@aztec/noir-noir_js": "2.0.3",
-    "@aztec/pxe": "^2.0.3",
+    "@aztec/accounts": "3.0.0-nightly.20251024",
+    "@aztec/aztec.js": "3.0.0-nightly.20251024",
+    "@aztec/bb.js": "3.0.0-nightly.20251024",
+    "@aztec/kv-store": "3.0.0-nightly.20251024",
+    "@aztec/noir-contracts.js": "3.0.0-nightly.20251024",
+    "@aztec/noir-noir_js": "3.0.0-nightly.20251024",
+    "@aztec/pxe": "3.0.0-nightly.20251024",
+    "@aztec/test-wallet": "3.0.0-nightly.20251024",
     "add": "^2.0.6",
     "tsx": "^4.20.6"
   }
