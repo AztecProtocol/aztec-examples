@@ -40,9 +40,7 @@ async function main() {
   await manager.send({ from: AztecAddress.ZERO, fee: { paymentMethod: sponsoredPaymentMethod } }).deployed()
   const accounts = await testWallet.getAccounts();
 
-  const valueNotEqual = await Contract.deploy(testWallet, ValueNotEqualContractArtifact, [
-    10, accounts[0].item
-  ], 'initialize').send({ from: accounts[0].item, fee: { paymentMethod: sponsoredPaymentMethod } }).deployed() as ValueNotEqualContract
+  const valueNotEqual = await ValueNotEqualContract.deploy(testWallet, 10, accounts[0].item).send({ from: accounts[0].item, fee: { paymentMethod: sponsoredPaymentMethod } }).deployed()
 
   const tx = await valueNotEqual.methods.increment(accounts[0].item, data.vkAsFields as unknown as FieldLike[], data.proofAsFields as unknown as FieldLike[], data.publicInputs as unknown as FieldLike[]).send({ from: accounts[0].item, fee: { paymentMethod: sponsoredPaymentMethod } }).wait()
 
