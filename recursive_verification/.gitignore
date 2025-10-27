@@ -3,3 +3,6 @@ node_modules
 **/codegenCache.json
 **/artifacts/
 store/
+pxe/
+barretenberg-debug.*
+recursive_verification/pxe

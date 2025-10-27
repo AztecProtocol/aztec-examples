@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AZTEC_ENV: sandbox
-      AZTEC_VERSION: 3.0.0-nightly.20251024
+      AZTEC_VERSION: 3.0.0-nightly.20251026
 
     steps:
       - name: Checkout repository

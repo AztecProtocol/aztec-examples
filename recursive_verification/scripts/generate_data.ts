@@ -20,7 +20,7 @@ const proofAsFields = deflattenFields(mainProofData.proof)
 const barretenbergAPI = await Barretenberg.new({ threads: 1 });
 
 // write recursive proof artifacts and public inputs to file, add pu
-fs.writeFileSync('data.json', JSON.stringify({ ...recursiveProofArtifacts, publicInputs: mainProofData.publicInputs }, null, 2))
+fs.writeFileSync('data.json', JSON.stringify({ ...recursiveProofArtifacts, proofAsFields, publicInputs: mainProofData.publicInputs }, null, 2))
 await barretenbergAPI.destroy()
 console.log("Done")
 exit()

@@ -7,7 +7,7 @@ pub contract ValueNotEqual {
     global HONK_IDENTIFIER: u32 = 1;
 
     use aztec::{
-        macros::{functions::{initializer, private, public, utility}, storage::storage},
+        macros::{functions::{external, initializer}, storage::storage},
         oracle::debug_log::debug_log_format,
         protocol_types::{address::AztecAddress, traits::ToField},
         state_vars::Map,
@@ -20,13 +20,13 @@ pub contract ValueNotEqual {
     }
 
     #[initializer]
-    #[private]
+    #[external("private")]
     fn initialize(headstart: u64, owner: AztecAddress) {
         let counters = storage.counters;
         counters.at(owner).add(headstart, owner);
     }
 
-    #[private]
+    #[external("private")]
     fn increment(
         owner: AztecAddress,
         verification_key: [Field; HONK_VK_SIZE],
@@ -40,12 +40,12 @@ pub contract ValueNotEqual {
         counters.at(owner).add(1, owner);
     }
 
-    #[public]
+    #[external("public")]
     fn emit_in_public(n: Field) {
         context.push_note_hash(n);
     }
 
-    #[utility]
+    #[external("utility")]
     unconstrained fn get_counter(owner: AztecAddress) -> Field {
         storage.counters.at(owner).get_value()
     }
