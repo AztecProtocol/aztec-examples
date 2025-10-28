@@ -11,12 +11,12 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `2.0.3`
+**Aztec Version**: `3.0.0-nightly.20251026`
 
 ## Prerequisites
 
 - [Bun](https://bun.sh/) runtime (v1.0 or higher)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 2.0.3)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-nightly.20251026)
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -61,7 +61,7 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 2.0.3
+aztec-up 3.0.0-nightly.20251026
 ```
 
 This ensures compatibility with the contract dependencies.
@@ -153,7 +153,7 @@ For a fresh setup, run these commands in order:
 bun install
 
 # 2. Setup Aztec
-aztec-up 2.0.3
+aztec-up 3.0.0-nightly.20251026
 
 # 3. Compile circuit
 cd circuit && aztec-nargo compile && cd ..

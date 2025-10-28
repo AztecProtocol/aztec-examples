@@ -46,18 +46,20 @@ aztec-examples/
 ## Development Commands
 
 ### Prerequisites
+
 ```bash
 # Install Aztec tools (required)
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 2.0.3  # For recursive_verification
+aztec-up 3.0.0-nightly.20251026  # For recursive_verification
 aztec-up 2.0.2  # For starter-token
 ```
 
 ### Building Contracts
 
 From a contract directory containing `Nargo.toml`:
+
 ```bash
 # Compile an Aztec contract
 aztec-nargo compile
@@ -180,12 +182,14 @@ npm start
 ### Aztec Contract Structure
 
 Aztec contracts use the `#[aztec]` macro and define functions as either:
+
 - `#[private]`: Executed client-side with zero-knowledge proofs
 - `#[public]`: Executed on-chain by the protocol
 - `#[initializer]`: Constructor-like functions for setup
 - `#[unconstrained]`: View functions that don't modify state
 
 Key considerations:
+
 - **Private functions**: Optimize for circuit size (gates), unconstrained functions don't add gates
 - **Public functions**: Optimize for gas cost, unconstrained functions do add cost
 - **Unconstrained functions**: Used for computation that doesn't need proving, must verify results in constrained context
@@ -193,6 +197,7 @@ Key considerations:
 ### Proof Verification Pattern (recursive_verification)
 
 The recursive verification example demonstrates:
+
 - **Off-chain proof generation**: Noir circuits compiled and executed with Barretenberg
 - **On-chain verification**: Using `std::verify_proof_with_type` in Aztec contracts
 - **UltraHonk proving system**: Generates proofs with 457 field elements, verification keys with 115 fields
@@ -201,6 +206,7 @@ The recursive verification example demonstrates:
 ### Token Pattern (starter-token)
 
 The token example showcases:
+
 - **Dual balance system**: Public and private token balances
 - **State management**: Using `PublicMutable` and `Map` for storage
 - **Access control**: Owner-based permissions for minting
@@ -209,6 +215,7 @@ The token example showcases:
 ### Testing Pattern
 
 Tests use the Testing Execution Environment (TXE):
+
 ```noir
 use dep::aztec::test::helpers::test_environment::TestEnvironment;
 
@@ -229,6 +236,7 @@ unconstrained fn test_function() {
 ### Aztec Contract Dependencies
 
 Aztec contracts specify dependencies in `Nargo.toml`:
+
 ```toml
 [dependencies]
 aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "vX.X.X", directory = "noir-projects/aztec-nr/aztec" }
@@ -236,12 +244,13 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 ```
 
 **Version Compatibility**: Different examples may use different Aztec versions:
-- `recursive_verification`: v2.0.3
-- `starter-token`: v2.0.2
+
+- `recursive_verification`: v3.0.0-nightly.20251026
 
 ### JavaScript/TypeScript Dependencies
 
 TypeScript projects use:
+
 - `@aztec/aztec.js`: Aztec SDK for contract deployment and interaction
 - `@aztec/accounts`: Account management for Aztec
 - `@aztec/bb.js`: Barretenberg backend for proof generation (recursive_verification)
@@ -261,11 +270,13 @@ The repository includes GitHub Actions workflows for automated testing:
 ### recursive-verification-tests.yml
 
 Runs on:
+
 - Push to main branch
 - Pull requests modifying `recursive_verification/**`
 - Manual workflow dispatch
 
 Steps:
+
 1. Sets up Node.js (v22) and Bun
 2. Installs Aztec CLI
 3. Starts Aztec sandbox
@@ -277,18 +288,23 @@ Steps:
 ## Common Issues and Solutions
 
 ### Issue: "Cannot find module './contract/artifacts/'"
+
 **Solution**: Run `bun ccc` or `aztec-nargo compile` to generate contract artifacts
 
 ### Issue: "Failed to connect to PXE"
+
 **Solution**: Ensure Aztec sandbox is running with `aztec start --sandbox`
 
 ### Issue: "Proof verification failed"
+
 **Solution**: Regenerate proof data after circuit changes with `bun data`
 
 ### Issue: Memory issues during proof generation
+
 **Solution**: Close other applications or use a machine with more RAM (8GB+ recommended)
 
 ### Issue: Version compatibility errors
+
 **Solution**: Check the Aztec version required for each example and set with `aztec-up <version>`
 
 ## Best Practices
