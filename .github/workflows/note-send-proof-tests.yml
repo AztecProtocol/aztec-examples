@@ -1,0 +1,111 @@
+name: Note Send Proof Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "note-send-proof/**"
+      - ".github/workflows/note-send-proof-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  note-send-proof-tests:
+    name: Note Send Proof Tests
+    runs-on: ubuntu-latest
+    env:
+      AZTEC_ENV: sandbox
+      AZTEC_VERSION: 2.0.3
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable Corepack for Yarn
+        run: corepack enable
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Aztec CLI
+        run: |
+          curl -s https://install.aztec.network > tmp.sh
+          NON_INTERACTIVE=1 bash tmp.sh
+          rm tmp.sh
+
+      - name: Update path
+        run: echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+
+      - name: Set Aztec version and start sandbox
+        run: |
+          aztec-up ${{ env.AZTEC_VERSION }}
+          aztec start --sandbox &
+
+      - name: Wait for sandbox to be ready
+        run: |
+          echo "Waiting for sandbox to start..."
+          MAX_RETRIES=60
+          for i in $(seq 1 $MAX_RETRIES); do
+            if curl -s http://localhost:8080/status >/dev/null 2>&1; then
+              echo "✅ Sandbox is ready!"
+              break
+            fi
+            if [ $i -eq $MAX_RETRIES ]; then
+              echo "❌ Sandbox failed to start after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Waiting... ($i/$MAX_RETRIES)"
+            sleep 2
+          done
+
+      - name: Install project dependencies
+        working-directory: note-send-proof
+        run: yarn install
+
+      - name: Compile Aztec contract
+        working-directory: note-send-proof/sample-contract
+        run: aztec-nargo compile
+
+      - name: Post-process contract and generate artifacts
+        working-directory: note-send-proof
+        run: yarn ccc
+
+      - name: Generate note hash data
+        working-directory: note-send-proof
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+        run: |
+          echo "Generating note hash data..."
+          yarn data
+        timeout-minutes: 15
+
+      - name: Run tests
+        working-directory: note-send-proof
+        run: yarn test
+        timeout-minutes: 15
+
+      - name: Upload test results if failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            note-send-proof/tests/**/*.log
+            note-send-proof/data.json
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Stopping Aztec sandbox..."
+          pkill -f "aztec" || true
+          docker stop $(docker ps -q) || true
+          docker rm $(docker ps -a -q) || true
