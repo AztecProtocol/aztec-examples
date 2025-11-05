@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 3.0.0-nightly.20251026 to verify Noir proofs within smart contracts on the Aztec network.
+This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 3.0.0-devnet.2 to verify Noir proofs within smart contracts on the Aztec network.
 
 The project consists of:
+
 - A Noir circuit (`hello_circuit`) that proves x ≠ y
 - An Aztec smart contract (`ValueNotEqual`) that verifies the proof on-chain
 - Scripts to generate proof data and deploy/interact with the contract
@@ -14,6 +15,7 @@ The project consists of:
 ## Common Development Commands
 
 ### Environment Setup
+
 ```bash
 # Install dependencies
 bun install
@@ -26,6 +28,7 @@ aztec start --sandbox
 ```
 
 ### Circuit Development
+
 ```bash
 # Compile the Noir circuit
 cd circuit && aztec-nargo compile
@@ -38,6 +41,7 @@ cd circuit && nargo test
 ```
 
 ### Contract Development
+
 ```bash
 # Compile contract, postprocess, and generate TypeScript bindings
 bun ccc
@@ -55,11 +59,13 @@ bun recursion
 ## Architecture
 
 ### Circuit (`circuit/`)
+
 - **`src/main.nr`**: Simple circuit that asserts two field values are not equal
 - **`target/hello_circuit.json`**: Compiled circuit bytecode and ABI
 - Uses UltraHonk proving system for proof generation
 
 ### Contract (`contract/`)
+
 - **`src/main.nr`**: Aztec smart contract with:
   - `initialize()`: Sets up counter with initial value for an owner
   - `increment()`: Verifies a Noir proof and increments the counter
@@ -68,7 +74,9 @@ bun recursion
 - Stores private counters using `EasyPrivateUint` from Aztec-nr libraries
 
 ### Scripts (`scripts/`)
+
 - **`generate_data.ts`**:
+
   - Executes the circuit with inputs (x=1, y=2)
   - Generates UltraHonk proof using Barretenberg backend
   - Serializes proof, verification key, and public inputs to `data.json`
@@ -80,17 +88,20 @@ bun recursion
   - Verifies the proof on-chain and updates the counter
 
 ### Data Flow
+
 1. Circuit compilation produces bytecode (`hello_circuit.json`)
 2. `generate_data.ts` creates proof data from circuit execution
 3. Contract compilation produces Aztec contract artifact and TypeScript bindings
 4. `run_recursion.ts` deploys contract and submits proof for on-chain verification
 
 ## Key Dependencies
+
 - `@aztec/aztec.js`: Aztec SDK for contract deployment and interaction
 - `@aztec/bb.js`: Barretenberg backend for proof generation
 - `@aztec/noir-noir_js`: Noir.js for circuit execution
 - `bun`: JavaScript runtime and package manager
 
 ## Testing
+
 - Circuit tests: Use `nargo test` in the circuit directory
 - Contract verification: Run the full flow with `bun recursion` after starting the sandbox

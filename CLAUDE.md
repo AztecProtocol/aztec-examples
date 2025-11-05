@@ -52,7 +52,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 3.0.0-nightly.20251026  # For recursive_verification
+aztec-up 3.0.0-devnet.2  # For recursive_verification
 aztec-up 2.0.2  # For starter-token
 ```
 
@@ -245,7 +245,7 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 
 **Version Compatibility**: Different examples may use different Aztec versions:
 
-- `recursive_verification`: v3.0.0-nightly.20251026
+- `recursive_verification`: v3.0.0-devnet.2
 
 ### JavaScript/TypeScript Dependencies
 

@@ -11,12 +11,12 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `3.0.0-nightly.20251026`
+**Aztec Version**: `3.0.0-devnet.2`
 
 ## Prerequisites
 
 - [Bun](https://bun.sh/) runtime (v1.0 or higher)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-nightly.20251026)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.2)
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -61,7 +61,7 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 3.0.0-nightly.20251026
+aztec-up 3.0.0-devnet.2
 ```
 
 This ensures compatibility with the contract dependencies.
@@ -153,7 +153,7 @@ For a fresh setup, run these commands in order:
 bun install
 
 # 2. Setup Aztec
-aztec-up 3.0.0-nightly.20251026
+aztec-up 3.0.0-devnet.2
 
 # 3. Compile circuit
 cd circuit && aztec-nargo compile && cd ..
@@ -199,6 +199,7 @@ This runs the tests defined in `circuit/src/main.nr`. The test verifies that the
 ### Integration Tests
 
 The test suite (`tests/recursive_verification.test.ts`) includes:
+
 - Contract deployment verification
 - Proof verification and counter increment tests
 - Multi-user counter management
@@ -227,6 +228,7 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
    - Verify the circuit was compiled with `cd circuit && aztec-nargo compile`
 
 5. **Memory issues during proof generation**
+
    - The Barretenberg prover requires significant RAM
    - Close other applications or use a machine with more memory
 
