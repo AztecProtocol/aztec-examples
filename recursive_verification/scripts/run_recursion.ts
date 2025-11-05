@@ -10,11 +10,40 @@ import { getPXEConfig } from "@aztec/pxe/config";
 import { TestWallet } from "@aztec/test-wallet/server";
 import { AztecAddress } from "@aztec/aztec.js/addresses";
 import { rm } from "node:fs/promises";
+import { join } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { serializePrivateExecutionSteps } from "@aztec/stdlib/kernel";
+import type {
+  ContractFunctionInteraction,
+  DeployMethod,
+  DeployOptions,
+  SendInteractionOptions,
+} from "@aztec/aztec.js/contracts";
 
 const sponsoredFPC = await getSponsoredFPCInstance();
 const sponsoredPaymentMethod = new SponsoredFeePaymentMethod(
   sponsoredFPC.address
 );
+
+async function captureProfile(
+  interaction: ContractFunctionInteraction | DeployMethod,
+  opts: SendInteractionOptions | DeployOptions,
+  label: string
+) {
+  const result = await interaction.profile({
+    ...opts,
+    profileMode: "full",
+    skipProofGeneration: true,
+  });
+  const ivcFolder = process.env.CAPTURE_IVC_FOLDER ?? "ivc";
+  const resultsDirectory = join(ivcFolder, label);
+  await mkdir(resultsDirectory, { recursive: true });
+  const ivcInputsPath = join(resultsDirectory, "ivc-inputs.msgpack");
+  await writeFile(
+    ivcInputsPath,
+    serializePrivateExecutionSteps(result.executionSteps)
+  );
+}
 
 export const setupSandbox = async (): Promise<TestWallet> => {
   try {
@@ -49,31 +78,37 @@ async function main() {
     .deployed();
   const accounts = await testWallet.getAccounts();
 
-  const valueNotEqual = await ValueNotEqualContract.deploy(
+  const deploymentOptions = {
+    from: accounts[0].item,
+    fee: { paymentMethod: sponsoredPaymentMethod },
+  };
+
+  const deploymentInteraction = await ValueNotEqualContract.deploy(
     testWallet,
     10,
     accounts[0].item
-  )
-    .send({
-      from: accounts[0].item,
-      fee: { paymentMethod: sponsoredPaymentMethod },
-    })
+  );
+
+  await captureProfile(deploymentInteraction, deploymentOptions, "deployment");
+
+  const valueNotEqual = await deploymentInteraction
+    .send(deploymentOptions)
     .deployed();
 
-  const tx = await valueNotEqual.methods
-    .increment(
-      accounts[0].item,
-      data.vkAsFields as unknown as FieldLike[],
-      data.proofAsFields as unknown as FieldLike[],
-      data.publicInputs as unknown as FieldLike[]
-    )
-    .send({
-      from: accounts[0].item,
-      fee: { paymentMethod: sponsoredPaymentMethod },
-    })
-    .wait();
+  const opts = {
+    from: accounts[0].item,
+    fee: { paymentMethod: sponsoredPaymentMethod },
+  };
 
-  console.log(`Tx hash: ${tx.txHash.toString()}`);
+  const interaction = await valueNotEqual.methods.increment(
+    accounts[0].item,
+    data.vkAsFields as unknown as FieldLike[],
+    data.proofAsFields as unknown as FieldLike[],
+    data.publicInputs as unknown as FieldLike[]
+  );
+
+  await captureProfile(interaction, opts, "recursion");
+
   const counterValue = await valueNotEqual.methods
     .get_counter(accounts[0].item)
     .simulate({ from: accounts[0].item });
