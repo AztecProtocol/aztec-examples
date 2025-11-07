@@ -3,8 +3,8 @@
 cd recursive_verification
 bun install
 bash -i <(curl -s https://install.aztec.network)
-aztec-up 3.0.0-devnet.2
-docker tag aztecprotocol/aztec:3.0.0-devnet.2 aztecprotocol/aztec:latest
+aztec-up 3.0.0-devnet.4
+docker tag aztecprotocol/aztec:3.0.0-devnet.4 aztecprotocol/aztec:latest
 cd circuit && aztec-nargo compile && aztec-nargo execute && cd ..
 bun data
 bun ccc

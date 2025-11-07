@@ -57,7 +57,8 @@ describe("Recursive Verification", () => {
       owner.getAddress(),
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
-      data.publicInputs as unknown as FieldLike[]
+      data.publicInputs as unknown as FieldLike[],
+      data.vkHash as unknown as FieldLike,
     ).send({ from: owner.getAddress() }).wait()
 
     expect(tx).toBeDefined()
@@ -85,7 +86,8 @@ describe("Recursive Verification", () => {
       owner.getAddress(),
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
-      data.publicInputs as unknown as FieldLike[]
+      data.publicInputs as unknown as FieldLike[],
+      data.vkHash as unknown as FieldLike
     ).send({ from: owner.getAddress() }).wait()
 
     expect(tx).toBeDefined()
@@ -118,7 +120,8 @@ describe("Recursive Verification", () => {
       user1.getAddress(),
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
-      data.publicInputs as unknown as FieldLike[]
+      data.publicInputs as unknown as FieldLike[],
+      data.vkHash as unknown as FieldLike
     ).send({ from: user1.getAddress() }).wait()
 
     // Check user1's counter

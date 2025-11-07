@@ -3,8 +3,8 @@ use aztec::macros::aztec;
 #[aztec]
 pub contract ValueNotEqual {
     global HONK_VK_SIZE: u32 = 115;
-    global HONK_PROOF_SIZE: u32 = 457;
-    global HONK_IDENTIFIER: u32 = 1;
+    global HONK_PROOF_SIZE: u32 = 492 + 16;
+    global HONK_IDENTIFIER: u32 = 7;
 
     use aztec::{
         macros::{functions::{external, initializer}, storage::storage},
@@ -32,9 +32,10 @@ pub contract ValueNotEqual {
         verification_key: [Field; HONK_VK_SIZE],
         proof: [Field; HONK_PROOF_SIZE],
         public_inputs: [Field; 1],
+        vk_hash: Field
     ) {
         debug_log_format("Incrementing counter for owner {0}", [owner.to_field()]);
-        std::verify_proof_with_type(verification_key, proof, public_inputs, 0x0, HONK_IDENTIFIER);
+        std::verify_proof_with_type(verification_key, proof, public_inputs, vk_hash, HONK_IDENTIFIER);
         ValueNotEqual::at(context.this_address()).emit_in_public(12345).enqueue(&mut context);
         let counters = storage.counters;
         counters.at(owner).add(1, owner);

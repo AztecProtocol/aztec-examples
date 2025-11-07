@@ -104,7 +104,8 @@ async function main() {
     accounts[0].item,
     data.vkAsFields as unknown as FieldLike[],
     data.proofAsFields as unknown as FieldLike[],
-    data.publicInputs as unknown as FieldLike[]
+    data.publicInputs as unknown as FieldLike[],
+    data.vkHash as unknown as FieldLike
   );
 
   await captureProfile(interaction, opts, "recursion");
