@@ -46,6 +46,9 @@ jobs:
       - name: Update path
         run: echo "$HOME/.aztec/bin" >> $GITHUB_PATH
 
+      - name: Tag Docker image as latest
+        run: docker tag aztecprotocol/aztec:${{ env.AZTEC_VERSION }} aztecprotocol/aztec:latest
+
       - name: Set Aztec version and start sandbox
         run: |
           aztec-up ${{ env.AZTEC_VERSION }}
