@@ -117,7 +117,7 @@ async function main() {
     .simulate({ from: accounts[0].item });
   console.log(`Counter value: ${counterValue}`);
 
-  assert(counterValue === 11);
+  assert(counterValue === 11n);
 }
 
 main().catch((error) => {
