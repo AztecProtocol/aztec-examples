@@ -70,7 +70,7 @@ jobs:
 
       - name: Install project dependencies
         working-directory: recursive_verification
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Compile Noir circuit
         working-directory: recursive_verification/circuit
