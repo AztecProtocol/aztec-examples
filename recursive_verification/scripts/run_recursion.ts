@@ -3,7 +3,6 @@ import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee";
 import type { FieldLike } from "@aztec/aztec.js/abi";
 import { getSponsoredFPCInstance } from "./sponsored_fpc.js";
 import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC";
-export const PXE_URL = "http://localhost:8080";
 import { ValueNotEqualContract } from "../contract/artifacts/ValueNotEqual";
 import data from "../data.json";
 import { getPXEConfig } from "@aztec/pxe/config";
@@ -19,6 +18,9 @@ import type {
   DeployOptions,
   SendInteractionOptions,
 } from "@aztec/aztec.js/contracts";
+import assert from "node:assert";
+
+export const NODE_URL = "http://localhost:8080";
 
 const sponsoredFPC = await getSponsoredFPCInstance();
 const sponsoredPaymentMethod = new SponsoredFeePaymentMethod(
@@ -45,10 +47,9 @@ async function captureProfile(
   );
 }
 
-export const setupSandbox = async (): Promise<TestWallet> => {
+export const setupWallet = async (): Promise<TestWallet> => {
   try {
-    const nodeUrl = "http://localhost:8080";
-    const aztecNode = await createAztecNodeClient(nodeUrl);
+    const aztecNode = await createAztecNodeClient(NODE_URL);
     const config = getPXEConfig();
     await rm("pxe", { recursive: true, force: true });
     config.dataDirectory = "pxe";
@@ -67,7 +68,7 @@ export const setupSandbox = async (): Promise<TestWallet> => {
 };
 
 async function main() {
-  const testWallet = await setupSandbox();
+  const testWallet = await setupWallet();
   const account = await testWallet.createAccount();
   const manager = await account.getDeployMethod();
   await manager
@@ -78,21 +79,15 @@ async function main() {
     .deployed();
   const accounts = await testWallet.getAccounts();
 
-  const deploymentOptions = {
-    from: accounts[0].item,
-    fee: { paymentMethod: sponsoredPaymentMethod },
-  };
-
-  const deploymentInteraction = await ValueNotEqualContract.deploy(
+  const valueNotEqual = await ValueNotEqualContract.deploy(
     testWallet,
     10,
     accounts[0].item
-  );
-
-  await captureProfile(deploymentInteraction, deploymentOptions, "deployment");
-
-  const valueNotEqual = await deploymentInteraction
-    .send(deploymentOptions)
+  )
+    .send({
+      from: accounts[0].item,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    })
     .deployed();
 
   const opts = {
@@ -110,10 +105,19 @@ async function main() {
 
   await captureProfile(interaction, opts, "recursion");
 
-  const counterValue = await valueNotEqual.methods
+  let counterValue = await valueNotEqual.methods
     .get_counter(accounts[0].item)
     .simulate({ from: accounts[0].item });
   console.log(`Counter value: ${counterValue}`);
+
+  await interaction.send(opts).wait();
+
+  counterValue = await valueNotEqual.methods
+    .get_counter(accounts[0].item)
+    .simulate({ from: accounts[0].item });
+  console.log(`Counter value: ${counterValue}`);
+
+  assert(counterValue === 11);
 }
 
 main().catch((error) => {

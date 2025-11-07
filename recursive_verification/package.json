@@ -6,8 +6,6 @@
     "clean": "rm -rf store",
     "cli": "bun run cli.ts",
     "ccc": "cd contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o artifacts",
-    "bb-download-debug": "curl -L https://github.com/AztecProtocol/aztec-packages/releases/download/v3.0.0-devnet.4/barretenberg-threads-debug-wasm.tar.gz -o barretenberg-debug.wasm.gz && tar -xzvf barretenberg-debug.wasm.gz",
-    "recursion:debug": "LOG_LEVEL=verbose bun run recursion",
     "data": "bun run scripts/generate_data.ts",
     "recursion": "tsx scripts/run_recursion.ts",
     "test": "bun clean && bun test",
