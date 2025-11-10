@@ -1,14 +1,7 @@
 {
   "name": "account-contract",
   "type": "module",
-  "scripts": {
-    "clean": "rm -rf data.json",
-    "ccc": "cd sample-contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o ../contract/artifacts",
-    "data": "tsx scripts/generate_data.ts",
-    "create-note": "tsx scripts/create_note.ts",
-    "test": "npm run clean && jest",
-    "test:watch": "jest --watch"
-  },
+  "scripts": {},
   "devDependencies": {
     "@jest/globals": "^29.0.0",
     "@swc/core": "^1.3.0",
