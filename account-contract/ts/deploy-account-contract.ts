@@ -2,6 +2,7 @@
 import { AztecAddress } from '@aztec/stdlib/aztec-address';
 import { SponsoredFeePaymentMethod } from '@aztec/aztec.js/fee';
 import { getContractInstanceFromInstantiationParams } from '@aztec/stdlib/contract';
+import { CardGameContract } from '@aztec/noir-contracts.js/CardGame';
 import { SponsoredFPCContractArtifact } from '@aztec/noir-contracts.js/SponsoredFPC';
 import { SPONSORED_FPC_SALT } from '@aztec/constants';
 import { Fr } from '@aztec/foundation/fields';
@@ -61,7 +62,7 @@ const wallet = await TestWallet.create(createAztecNodeClient('http://localhost:8
 
 await wallet.registerContract(await getSponsoredPFCContract(), SponsoredFPCContractArtifact);
 
-const hello = new DeployMethod(
+const accountContractDeployMethod = new DeployMethod(
     publicKeys,
     wallet,
     artifact,
@@ -70,7 +71,15 @@ const hello = new DeployMethod(
     constructorName,
 )
 
-const { estimatedGas, stats } = await hello.simulate(deployAccountOpts);
+const { estimatedGas, stats } = await accountContractDeployMethod.simulate(deployAccountOpts);
 
 console.log(estimatedGas);
 console.log(stats);
+
+const deployedAccountContract = await accountContractDeployMethod.send(deployAccountOpts).wait();
+
+await wallet.createAccount({ secret: Fr.random(), contract: passwordAccountContract, salt: Fr.random() });
+
+const cardGameContract = await CardGameContract.deploy(wallet).send({ from: deployedAccountContract.contract.address }).deployed();
+
+console.log(cardGameContract)

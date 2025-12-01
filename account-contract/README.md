@@ -97,52 +97,19 @@ Install TypeScript dependencies:
 yarn install
 ```
 
-## Usage
+Start the local network:
 
-### 1. Deploy the Account Contract
-
-```typescript
-import { PasswordAccountContract } from "./ts/password-account-entrypoint";
-import { Fr } from "@aztec/foundation/fields";
-
-// Create account contract with password
-const password = new Fr(123456789);
-const accountContract = new PasswordAccountContract(password);
-
-// Get artifact and initialization args
-const artifact = await accountContract.getContractArtifact();
-const { constructorName, constructorArgs } =
-  await accountContract.getInitializationFunctionAndArgs();
-
-// Deploy using DeployMethod
-// See ts/deploy-account-contract.ts for full example
+```bash
+aztec start --local-network
 ```
 
-### 2. Create Transactions
+Deploy the account contract to the local network:
 
-The account contract authenticates transactions by verifying the password hash:
-
-```typescript
-// Transactions automatically include the password in the entrypoint call
-// The password is hashed with Poseidon2 and compared to stored hash
+```bash
+npx tsx deploy-account-contract.ts
 ```
 
-### 3. Authorization Witnesses
-
-For cross-contract calls requiring authorization:
-
-```typescript
-// The account can authorize actions for other contracts
-// Password is used to verify the authorization
-```
-
-## Fee Payment Methods
-
-The contract supports three fee payment options:
-
-1. **EXTERNAL (0)**: Another contract pays the fee
-2. **PREEXISTING_FEE_JUICE (1)**: Account pays with existing FeeJuice balance
-3. **FEE_JUICE_WITH_CLAIM (2)**: Account pays with FeeJuice claimed in same transaction
+### Use the account contract as normal
 
 ## Security Considerations
 
@@ -151,6 +118,57 @@ The contract supports three fee payment options:
 - Password is included in transaction data (encrypted in private state)
 - This is a demonstration contract - production use should consider additional security measures
 - Consider using signature-based accounts for most production use cases
+
+## Important Considerations
+
+When implementing custom account contracts in Aztec, be aware of these critical points:
+
+### All Execution Starts in Private
+
+**This is the most important gotcha**: In Aztec, all transaction execution begins in the private context, even if your contract only has public functions. The account contract's `entrypoint` function always executes in private first.
+
+- Your `entrypoint` function must be a `private` or `unconstrained private` function
+- Even when calling public functions on other contracts, the call originates from private execution
+- Authentication logic in the entrypoint runs in the private context
+- If you need to validate anything on-chain, you must enqueue public calls and handle them accordingly
+
+### Password/Secret Storage
+
+- **Never store passwords in plain text**: Always hash sensitive data before storage (like we do with Poseidon2)
+- The `hashed_password` is stored in `PublicImmutable` storage, meaning it's visible on-chain but cannot be changed
+- Consider whether your authentication secret should be changeable (would require mutable storage)
+
+### Entrypoint Function Signature
+
+- The entrypoint must match the expected signature for account contracts
+- It receives the payload (functions to call) and fee payment options
+
+### State Management
+
+- Private state is encrypted and only visible to those with the viewing key
+- Public state is visible to everyone on-chain
+- Choose storage types carefully: `PublicImmutable`, `PublicMutable`, `PrivateImmutable`, `PrivateMutable`, `PrivateSet`, etc.
+- Changing storage types after deployment requires a new contract deployment
+
+### Transaction Construction
+
+- Account contracts need TypeScript integration for proper transaction construction
+- You must implement the `AccountContract`, `AccountInterface`, and custom entrypoint classes
+- The entrypoint class handles encoding your authentication mechanism into the transaction payload
+- Mismatches between Noir and TypeScript implementations will cause authentication failures
+
+### Testing and Debugging
+
+- Private execution errors can be harder to debug since execution details aren't always visible
+- Test thoroughly with different fee payment methods
+- Ensure your authentication mechanism works for both direct calls and authwit flows
+
+### Gas and Fee Considerations
+
+- Account contracts are responsible for paying transaction fees
+- You must handle the fee payment method selection properly
+- Failed fee payments will cause the entire transaction to fail
+- Consider how users will fund their account contracts with Fee Asset
 
 ## Dependencies
 
