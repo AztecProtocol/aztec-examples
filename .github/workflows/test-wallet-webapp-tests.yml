@@ -1,0 +1,97 @@
+name: Test Wallet Webapp Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "test-wallet-webapp/**"
+      - ".github/workflows/test-wallet-webapp-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  test-wallet-webapp-tests:
+    name: Test Wallet Webapp Tests
+    runs-on: ubuntu-latest
+    env:
+      AZTEC_VERSION: 3.0.0-devnet.5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Aztec CLI
+        run: |
+          curl -s https://install.aztec.network > tmp.sh
+          NON_INTERACTIVE=1 bash tmp.sh
+          rm tmp.sh
+
+      - name: Update path
+        run: echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+
+      - name: Set Aztec version and start sandbox
+        run: |
+          aztec-up ${{ env.AZTEC_VERSION }}
+          docker tag aztecprotocol/aztec:${{ env.AZTEC_VERSION }} aztecprotocol/aztec:latest
+          aztec start --sandbox &
+
+      - name: Wait for sandbox to be ready
+        run: |
+          echo "Waiting for sandbox to start..."
+          MAX_RETRIES=60
+          for i in $(seq 1 $MAX_RETRIES); do
+            if curl -s http://localhost:8080/status >/dev/null 2>&1; then
+              echo "✅ Sandbox is ready!"
+              break
+            fi
+            if [ $i -eq $MAX_RETRIES ]; then
+              echo "❌ Sandbox failed to start after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Waiting... ($i/$MAX_RETRIES)"
+            sleep 2
+          done
+
+      - name: Install project dependencies
+        working-directory: test-wallet-webapp
+        run: yarn install --frozen-lockfile
+
+      - name: Run lint
+        working-directory: test-wallet-webapp
+        run: yarn lint
+
+      - name: Build project
+        working-directory: test-wallet-webapp
+        run: yarn build
+
+      - name: Upload build artifacts if failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            test-wallet-webapp/dist/
+            test-wallet-webapp/node_modules/.vite/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Stopping Aztec sandbox..."
+          pkill -f "aztec" || true
+          docker stop $(docker ps -q) || true
+          docker rm $(docker ps -a -q) || true

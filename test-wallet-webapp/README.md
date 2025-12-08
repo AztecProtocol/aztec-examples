@@ -2,6 +2,16 @@
 
 This tutorial demonstrates how to build a browser-based wallet application for Aztec using React and Vite. It showcases creating wallets, deploying contracts, and interacting with the Aztec network directly from a web browser.
 
+## Aztec Version Compatibility
+
+This example is compatible with **Aztec v3.0.0-devnet.5**.
+
+To set this version:
+
+```bash
+aztec-up 3.0.0-devnet.5
+```
+
 ## What You'll Build
 
 A web application that demonstrates three core Aztec operations:

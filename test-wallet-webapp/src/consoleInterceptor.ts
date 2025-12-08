@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */ 
 // Global console interceptor for capturing all logs
 type LogCallback = (prefix: string, message: string) => void;
 

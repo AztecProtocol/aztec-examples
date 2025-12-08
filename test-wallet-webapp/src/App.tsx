@@ -112,7 +112,7 @@ function App() {
 
     try {
       const contract = await PrivateVotingContract.at(contractAddress, wallet);
-      await contract.methods.cast_vote(AztecAddress.random()).send({
+      await contract.methods.cast_vote(1n).send({
         from: address
       }).wait();
 
