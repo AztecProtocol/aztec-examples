@@ -46,41 +46,6 @@ bash -i <(curl -s https://install.aztec.network)
 aztec-up 3.0.0-devnet.4
 ```
 
-### Run the Examples
-
-#### Recursive Verification
-
-```bash
-cd recursive_verification
-bun install
-bun ccc         # Compile contracts
-bun data        # Generate proof data
-aztec start --sandbox  # Start local network (in new terminal)
-bun recursion   # Deploy and verify proof
-```
-
-#### Starter Token
-
-```bash
-cd starter-token/reference
-# Follow the specific setup instructions in the token example
-```
-
-## Repository Structure
-
-```
-aztec-examples/
-├── recursive_verification/     # Proof verification in contracts
-│   ├── circuit/               # Noir circuit implementation
-│   ├── contract/              # Aztec smart contract
-│   ├── scripts/               # TypeScript utilities
-│   ├── tests/                 # Integration test suite
-│   └── README.md             # Detailed documentation
-└── .github/                   # CI/CD workflows
-    └── workflows/
-        └── recursive-verification-tests.yml
-```
-
 ## Development Workflow
 
 ### Common Commands
