@@ -66,21 +66,21 @@ pub fn calculate_shares_out(
     current_supply: u128,
     total_liquidity: u128,
 ) -> (u128, u128) {
-    assert(total_liquidity > 0 as u128, "ZERO_LIQUIDITY");
-    assert(collateral_amount > 0 as u128, "ZERO_COLLATERAL");
+    assert(total_liquidity > 0, "ZERO_LIQUIDITY");
+    assert(collateral_amount > 0, "ZERO_COLLATERAL");
 
     // Calculate current price as fixed-point
     // price = (current_supply * PRICE_PRECISION) / total_liquidity
     let current_price = (current_supply * PRICE_PRECISION) / total_liquidity;
 
     // Prevent division by zero (price can't be zero unless supply is zero)
-    assert(current_price > 0 as u128, "ZERO_PRICE");
+    assert(current_price > 0, "ZERO_PRICE");
 
     // Calculate shares out
     // shares = (collateral_amount * PRICE_PRECISION) / current_price
     let shares_out = (collateral_amount * PRICE_PRECISION) / current_price;
 
-    assert(shares_out > 0 as u128, "INSUFFICIENT_OUTPUT");
+    assert(shares_out > 0, "INSUFFICIENT_OUTPUT");
 
     let new_supply = current_supply + shares_out;
 
@@ -92,7 +92,7 @@ pub fn calculate_shares_out(
 /// Formula: price = supply / total_supply
 /// Returns: price as fixed-point (price * PRICE_PRECISION)
 pub fn calculate_new_price(supply: u128, total_supply: u128) -> u128 {
-    assert(total_supply > 0 as u128, "ZERO_TOTAL_SUPPLY");
+    assert(total_supply > 0, "ZERO_TOTAL_SUPPLY");
 
     // Return as fixed-point: (supply * PRICE_PRECISION) / total_supply
     (supply * PRICE_PRECISION) / total_supply
@@ -109,7 +109,7 @@ pub fn calculate_price_impact(
 ) -> (u128, u128, u128) {
     let price_before = calculate_new_price(current_supply, total_liquidity);
 
-    let (shares_out, new_supply) = calculate_shares_out(
+    let (_shares_out, new_supply) = calculate_shares_out(
         collateral_amount,
         current_supply,
         total_liquidity,
@@ -139,9 +139,9 @@ fn test_calculate_shares_out_at_50_50() {
     // At 50/50 odds: supply=500, liquidity=1000
     // Price = 500/1000 = 0.5
     // Buying 100 collateral should give 200 shares (100/0.5)
-    let collateral = 100 as u128;
-    let supply = 500 as u128;
-    let liquidity = 1000 as u128;
+    let collateral = 100;
+    let supply = 500;
+    let liquidity = 1000;
 
     let (shares_out, new_supply) = calculate_shares_out(collateral, supply, liquidity);
 
@@ -154,9 +154,9 @@ fn test_calculate_shares_out_at_different_price() {
     // At 70/30 odds: supply=700, liquidity=1000
     // Price = 700/1000 = 0.7
     // Buying 70 collateral should give 100 shares (70/0.7)
-    let collateral = 70 as u128;
-    let supply = 700 as u128;
-    let liquidity = 1000 as u128;
+    let collateral = 70;
+    let supply = 700;
+    let liquidity = 1000;
 
     let (shares_out, new_supply) = calculate_shares_out(collateral, supply, liquidity);
 
@@ -167,8 +167,8 @@ fn test_calculate_shares_out_at_different_price() {
 #[test]
 fn test_calculate_new_price_50_50() {
     // At 50/50: price should be 500000 (0.5 * PRICE_PRECISION)
-    let supply = 500 as u128;
-    let total = 1000 as u128;
+    let supply = 500;
+    let total = 1000;
 
     let price = calculate_new_price(supply, total);
 
@@ -178,8 +178,8 @@ fn test_calculate_new_price_50_50() {
 #[test]
 fn test_calculate_new_price_70_30() {
     // At 70/30: YES price should be 700000 (0.7 * PRICE_PRECISION)
-    let supply = 700 as u128;
-    let total = 1000 as u128;
+    let supply = 700;
+    let total = 1000;
 
     let price = calculate_new_price(supply, total);
 
@@ -189,9 +189,9 @@ fn test_calculate_new_price_70_30() {
 #[test]
 fn test_calculate_price_impact() {
     // Starting at 50/50, buying 100 should move price from 0.5 to ~0.636
-    let collateral = 100 as u128;
-    let supply = 500 as u128;
-    let liquidity = 1000 as u128;
+    let collateral = 100;
+    let supply = 500;
+    let liquidity = 1000;
 
     let (price_before, price_after, impact) = calculate_price_impact(collateral, supply, liquidity);
 
@@ -205,8 +205,8 @@ fn test_calculate_price_impact() {
 #[test]
 fn test_prices_sum_to_one() {
     // YES price + NO price should always equal PRICE_PRECISION (1.0)
-    let yes_supply = 600 as u128;
-    let no_supply = 400 as u128;
+    let yes_supply = 600;
+    let no_supply = 400;
     let total = yes_supply + no_supply;
 
     let yes_price = calculate_new_price(yes_supply, total);
@@ -218,9 +218,9 @@ fn test_prices_sum_to_one() {
 #[test]
 fn test_large_purchase() {
     // Test with larger numbers to ensure no overflow issues
-    let collateral = 10000 as u128;
-    let supply = 50000 as u128;
-    let liquidity = 100000 as u128;
+    let collateral = 10000;
+    let supply = 50000;
+    let liquidity = 100000;
 
     let (shares_out, new_supply) = calculate_shares_out(collateral, supply, liquidity);
 

@@ -5,11 +5,11 @@ A prediction market implementation on Aztec using a **Constant Sum Market Maker 
 ## Overview
 
 This contract allows users to:
-- **Vote on binary outcomes** (YES/NO) **anonymously** - no one knows WHO voted
+- **Bet on binary outcomes** (YES/NO) **anonymously** - no one knows WHO placed a bet
 - **Hold fully private balances** - collateral and share holdings are all hidden
 - **Experience dynamic pricing** that adjusts based on market sentiment
 - **Get slippage protection** to prevent adverse price movements
-- **Single-transaction voting** using partial notes pattern
+- **Single-transaction betting** using partial notes pattern
 
 ## Privacy Model
 
@@ -17,10 +17,10 @@ This contract allows users to:
 
 | Data | Privacy | Notes |
 |------|---------|-------|
-| Voter identity | **PRIVATE** | Public function doesn't receive sender address |
+| Bettor identity | **PRIVATE** | Public function doesn't receive sender address |
 | Collateral balances | **PRIVATE** | Stored as private notes (UintNote) |
 | Share balances | **PRIVATE** | Stored as private notes (UintNote) |
-| Your vote (YES/NO) | **PRIVATE** | Hidden via partial notes |
+| Your bet (YES/NO) | **PRIVATE** | Hidden via partial notes |
 
 ### What's Public
 
@@ -32,7 +32,7 @@ This contract allows users to:
 
 ### Privacy Architecture
 
-The contract uses **partial notes** for private voting (like the [AMM contract](https://github.com/AztecProtocol/aztec-packages/tree/master/noir-projects/noir-contracts/contracts/amm_contract)):
+The contract uses **partial notes** for private betting (like the [AMM contract](https://github.com/AztecProtocol/aztec-packages/tree/master/noir-projects/noir-contracts/contracts/amm_contract)):
 
 ```
 1. buy_outcome() [PRIVATE]
@@ -55,7 +55,7 @@ Key privacy feature: The public `_process_buy()` function **does not receive the
 
 ## Usage
 
-### Voting Flow (Single Transaction)
+### Betting Flow (Single Transaction)
 
 ```typescript
 // Deposit collateral privately
@@ -94,8 +94,8 @@ const balance = await market.methods.get_collateral_balance(myAddress).simulate(
 bash -i <(curl -s https://install.aztec.network)
 aztec-up 3.0.0-devnet.4
 
-# Install npm dependencies
-npm install
+# Install dependencies
+yarn install
 ```
 
 ### Building
@@ -129,10 +129,10 @@ Tests the CSMM pricing functions:
 aztec start --sandbox
 
 # Run tests
-npm test
+yarn test
 ```
 
-Tests the full private voting flow:
+Tests the full private betting flow:
 - Contract deployment
 - Private deposit/withdraw
 - Private buy_outcome (single tx with partial notes)

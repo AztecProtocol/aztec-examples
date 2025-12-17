@@ -6,7 +6,7 @@ use dep::aztec::macros::aztec;
 /// All balances are private. Public function only sees trade amounts, not who traded.
 #[aztec]
 pub contract PredictionMarket {
-    use crate::lib::{calculate_shares_out, calculate_new_price};
+    use crate::lib::{calculate_shares_out, calculate_new_price, calculate_price_impact};
     use dep::aztec::{
         macros::{functions::{external, initializer, internal}, storage::storage},
         messages::message_delivery::MessageDelivery,
@@ -20,16 +20,12 @@ pub contract PredictionMarket {
     };
     use dep::uint_note::uint_note::{UintNote, PartialUintNote};
 
-    // Storage slots for deriving partial note locations
-    global YES_BALANCES_SLOT: Field = 6;
-    global NO_BALANCES_SLOT: Field = 7;
-
     #[storage]
     struct Storage<Context> {
         collateral_balances: Map<AztecAddress, PrivateSet<UintNote, Context>, Context>,
         yes_supply: PublicMutable<u128, Context>,
         no_supply: PublicMutable<u128, Context>,
-        liquidity_constant: PublicMutable<u128, Context>,
+        total_liquidity: PublicMutable<u128, Context>,
         admin: PublicMutable<AztecAddress, Context>,
         yes_balances: Map<AztecAddress, PrivateSet<UintNote, Context>, Context>,
         no_balances: Map<AztecAddress, PrivateSet<UintNote, Context>, Context>,
@@ -48,7 +44,7 @@ pub contract PredictionMarket {
         let half = initial_liquidity / 2;
         storage.yes_supply.write(half);
         storage.no_supply.write(half);
-        storage.liquidity_constant.write(initial_liquidity);
+        storage.total_liquidity.write(initial_liquidity);
     }
 
     /// Deposit collateral privately. Creates a private note for the sender.
@@ -115,7 +111,11 @@ pub contract PredictionMarket {
         }
 
         // Create partial note for shares
-        let base_slot = if is_yes { YES_BALANCES_SLOT } else { NO_BALANCES_SLOT };
+        // Storage slots are required for deriving partial note locations.
+        // This is because the partial note needs to be manually placed at that slot because we cannot use PrivateSet::insert().
+        // We cannot use PrivateSet::insert() because the note does not exist yet, as it is not fully created in private.
+
+        let base_slot = if is_yes { PredictionMarket::storage_layout().yes_balances.slot } else { PredictionMarket::storage_layout().no_balances.slot };
         let storage_slot: Field = derive_storage_slot_in_map(base_slot, sender);
         let partial_note = UintNote::partial(sender, storage_slot, &mut context, sender, contract_address);
 
@@ -131,7 +131,7 @@ pub contract PredictionMarket {
     fn _process_buy(is_yes: bool, collateral_amount: u128, min_shares_out: u128, partial_note: PartialUintNote) {
         let yes_supply = storage.yes_supply.read();
         let no_supply = storage.no_supply.read();
-        let liquidity = storage.liquidity_constant.read();
+        let liquidity = storage.total_liquidity.read();
 
         let (shares_out, new_supply) = calculate_shares_out(
             collateral_amount,
@@ -146,7 +146,7 @@ pub contract PredictionMarket {
         } else {
             storage.no_supply.write(new_supply);
         }
-        storage.liquidity_constant.write(liquidity + collateral_amount);
+        storage.total_liquidity.write(liquidity + collateral_amount);
 
         partial_note.complete(&mut context, context.this_address(), shares_out);
     }
@@ -159,10 +159,10 @@ pub contract PredictionMarket {
         calculate_new_price(if is_yes { yes_supply } else { no_supply }, yes_supply + no_supply)
     }
 
-    /// Get market state: (yes_supply, no_supply, liquidity_constant).
+    /// Get market state: (yes_supply, no_supply, total_liquidity).
     #[external("utility")]
     unconstrained fn get_market_state() -> (u128, u128, u128) {
-        (storage.yes_supply.read(), storage.no_supply.read(), storage.liquidity_constant.read())
+        (storage.yes_supply.read(), storage.no_supply.read(), storage.total_liquidity.read())
     }
 
     /// Quote shares out for a given collateral amount.
@@ -170,13 +170,28 @@ pub contract PredictionMarket {
     unconstrained fn quote_buy(is_yes: bool, collateral_amount: u128) -> u128 {
         let yes_supply = storage.yes_supply.read();
         let no_supply = storage.no_supply.read();
-        let liquidity = storage.liquidity_constant.read();
+        let liquidity = storage.total_liquidity.read();
         let (shares_out, _) = calculate_shares_out(
             collateral_amount,
             if is_yes { yes_supply } else { no_supply },
             liquidity,
         );
         shares_out
+    }
+
+    /// Quote price impact for a purchase.
+    /// Returns: (price_before, price_after, impact_percentage)
+    /// All values use PRICE_PRECISION (1_000_000) as the decimal base.
+    #[external("utility")]
+    unconstrained fn quote_price_impact(is_yes: bool, collateral_amount: u128) -> (u128, u128, u128) {
+        let yes_supply = storage.yes_supply.read();
+        let no_supply = storage.no_supply.read();
+        let liquidity = storage.total_liquidity.read();
+        calculate_price_impact(
+            collateral_amount,
+            if is_yes { yes_supply } else { no_supply },
+            liquidity,
+        )
     }
 
     /// Get user's private collateral balance.
