@@ -1,49 +1,90 @@
-import { describe, expect, test, beforeAll } from "bun:test"
-import { AccountWalletWithSecretKey, Contract, createPXEClient, waitForPXE, type FieldLike, type PXE, TxStatus } from "@aztec/aztec.js"
-import { getInitialTestAccountsWallets } from '@aztec/accounts/testing'
-import { ValueNotEqualContract, ValueNotEqualContractArtifact } from '../contract/artifacts/ValueNotEqual'
+import { describe, expect, test, beforeAll, afterAll } from "bun:test"
+import type { FieldLike } from "@aztec/aztec.js/abi"
+import { TxStatus } from "@aztec/aztec.js/tx"
+import { AztecAddress } from "@aztec/aztec.js/addresses"
+import { createAztecNodeClient } from "@aztec/aztec.js/node"
+import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
+import { TestWallet } from "@aztec/test-wallet/server"
+import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC"
+import { getPXEConfig } from "@aztec/pxe/config"
+import { ValueNotEqualContract } from '../contract/artifacts/ValueNotEqual'
+import { getSponsoredFPCInstance } from '../scripts/sponsored_fpc'
 import data from '../data.json'
 
-const PXE_URL = 'http://localhost:8080'
+const NODE_URL = 'http://localhost:8080'
 
-// Test timeout - proof verification can take some time
-const TEST_TIMEOUT = 60000 // 60 seconds
+// Test timeout - proof generation/verification can take several minutes
+const TEST_TIMEOUT = 600000 // 10 minutes
 
 describe("Recursive Verification", () => {
-  let pxe: PXE
-  let owner: AccountWalletWithSecretKey
-  let user1: AccountWalletWithSecretKey
-  let user2: AccountWalletWithSecretKey
+  let testWallet: TestWallet
+  let ownerAddress: AztecAddress
+  let user1Address: AztecAddress
   let valueNotEqualContract: ValueNotEqualContract
+  let sponsoredPaymentMethod: SponsoredFeePaymentMethod
 
   beforeAll(async () => {
-    // Setup PXE client
-    console.log(`Connecting to PXE at ${PXE_URL}`)
-    pxe = await createPXEClient(PXE_URL)
-    await waitForPXE(pxe)
-    console.log('PXE client connected')
+    // Setup TestWallet with PXE
+    console.log(`Connecting to Aztec Node at ${NODE_URL}`)
+    const aztecNode = await createAztecNodeClient(NODE_URL)
 
-    // Setup wallets
-    const wallets = await getInitialTestAccountsWallets(pxe)
-    owner = wallets[0]
-    user1 = wallets[1]
-    user2 = wallets[2]
+    // Setup sponsored FPC for fee payment
+    const sponsoredFPC = await getSponsoredFPCInstance()
+    sponsoredPaymentMethod = new SponsoredFeePaymentMethod(sponsoredFPC.address)
 
-    console.log('Test wallets configured')
-    console.info('Owner address:', owner.getAddress().toString())
-    console.info('User1 address:', user1.getAddress().toString())
-    console.info('User2 address:', user2.getAddress().toString())
+    // Create PXE config and TestWallet
+    const config = getPXEConfig()
+    // TODO: this hangs when set to true, need to debug 
+    config.proverEnabled = false
+
+    testWallet = await TestWallet.create(aztecNode, config)
+
+    // Register the sponsored FPC contract
+    await testWallet.registerContract({
+      instance: sponsoredFPC,
+      artifact: SponsoredFPCContract.artifact,
+    })
+    console.log('TestWallet configured')
+
+    // Create owner account
+    console.log('Creating owner account...')
+    const ownerAccountManager = await testWallet.createAccount()
+    console.log('Getting deploy method...')
+    const ownerDeployMethod = await ownerAccountManager.getDeployMethod()
+    console.log('Deploying account (this may take a while for proof generation)...')
+    const txReceipt = await ownerDeployMethod.send({
+      from: AztecAddress.ZERO,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    }).wait()
+    console.log(`Account deployed! Tx hash: ${txReceipt.txHash.toString()}`)
+
+    const accounts = await testWallet.getAccounts()
+    ownerAddress = accounts[0].item
+    console.info('Owner address:', ownerAddress.toString())
   }, TEST_TIMEOUT)
+
+  afterAll(async () => {
+    if (testWallet) {
+      await testWallet.stop()
+    }
+  })
 
   test("should deploy ValueNotEqual contract", async () => {
     const initialValue = 10
 
-    valueNotEqualContract = await Contract.deploy(
-      owner,
-      ValueNotEqualContractArtifact,
-      [initialValue, owner.getAddress()],
-      'initialize'
-    ).send({ from: owner.getAddress() }).deployed() as ValueNotEqualContract
+    const sendOpts = {
+      from: ownerAddress,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    }
+
+    valueNotEqualContract = await ValueNotEqualContract.deploy(
+      testWallet,
+      initialValue,
+      ownerAddress,
+      data.vkHash as unknown as FieldLike
+    )
+      .send(sendOpts)
+      .deployed()
 
     expect(valueNotEqualContract.address).toBeDefined()
     expect(valueNotEqualContract.address.toString()).not.toBe("")
@@ -52,14 +93,18 @@ describe("Recursive Verification", () => {
   }, TEST_TIMEOUT)
 
   test("should verify proof and increment counter", async () => {
+    const sendOpts = {
+      from: ownerAddress,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    }
+
     // Call increment with proof data
     const tx = await valueNotEqualContract.methods.increment(
-      owner.getAddress(),
+      ownerAddress,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
-      data.vkHash as unknown as FieldLike,
-    ).send({ from: owner.getAddress() }).wait()
+    ).send(sendOpts).wait()
 
     expect(tx).toBeDefined()
     expect(tx.txHash).toBeDefined()
@@ -71,8 +116,8 @@ describe("Recursive Verification", () => {
 
   test("should read incremented counter value", async () => {
     const counterValue = await valueNotEqualContract.methods.get_counter(
-      owner.getAddress()
-    ).simulate({ from: owner.getAddress() })
+      ownerAddress
+    ).simulate({ from: ownerAddress })
 
     // Initial value was 10, after increment should be 11
     expect(counterValue).toBe(11n)
@@ -81,14 +126,18 @@ describe("Recursive Verification", () => {
   }, TEST_TIMEOUT)
 
   test("should verify proof and increment counter again", async () => {
+    const sendOpts = {
+      from: ownerAddress,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    }
+
     // Second increment to verify the contract works multiple times
     const tx = await valueNotEqualContract.methods.increment(
-      owner.getAddress(),
+      ownerAddress,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
-      data.vkHash as unknown as FieldLike
-    ).send({ from: owner.getAddress() }).wait()
+    ).send(sendOpts).wait()
 
     expect(tx).toBeDefined()
     expect(tx.txHash).toBeDefined()
@@ -96,8 +145,8 @@ describe("Recursive Verification", () => {
 
     // Check counter value is now 12
     const counterValue = await valueNotEqualContract.methods.get_counter(
-      owner.getAddress()
-    ).simulate({ from: owner.getAddress() })
+      ownerAddress
+    ).simulate({ from: ownerAddress })
 
     expect(counterValue).toBe(12n)
 
@@ -107,27 +156,46 @@ describe("Recursive Verification", () => {
   test("should maintain separate counters for different users", async () => {
     const initialValue = 5
 
+    // Create user1 account
+    const user1AccountManager = await testWallet.createAccount()
+    const user1DeployMethod = await user1AccountManager.getDeployMethod()
+    await user1DeployMethod
+      .send({
+        from: AztecAddress.ZERO,
+        fee: { paymentMethod: sponsoredPaymentMethod },
+      })
+      .deployed()
+
+    const accounts = await testWallet.getAccounts()
+    user1Address = accounts[1].item
+
+    const sendOpts = {
+      from: user1Address,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    }
+
     // Deploy a new contract instance for user1
-    const user1Contract = await Contract.deploy(
-      user1,
-      ValueNotEqualContractArtifact,
-      [initialValue, user1.getAddress()],
-      'initialize'
-    ).send({ from: user1.getAddress() }).deployed() as ValueNotEqualContract
+    const user1Contract = await ValueNotEqualContract.deploy(
+      testWallet,
+      initialValue,
+      user1Address,
+      data.vkHash as unknown as FieldLike
+    )
+      .send(sendOpts)
+      .deployed()
 
     // Increment user1's counter
     await user1Contract.methods.increment(
-      user1.getAddress(),
+      user1Address,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
-      data.vkHash as unknown as FieldLike
-    ).send({ from: user1.getAddress() }).wait()
+    ).send(sendOpts).wait()
 
     // Check user1's counter
     const user1Counter = await user1Contract.methods.get_counter(
-      user1.getAddress()
-    ).simulate({ from: user1.getAddress() })
+      user1Address
+    ).simulate({ from: user1Address })
 
     expect(user1Counter).toBe(6n) // 5 + 1
 

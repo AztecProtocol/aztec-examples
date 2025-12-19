@@ -82,7 +82,8 @@ async function main() {
   const valueNotEqual = await ValueNotEqualContract.deploy(
     testWallet,
     10,
-    accounts[0].item
+    accounts[0].item,
+    data.vkHash as unknown as FieldLike
   )
     .send({
       from: accounts[0].item,
@@ -100,7 +101,6 @@ async function main() {
     data.vkAsFields as unknown as FieldLike[],
     data.proofAsFields as unknown as FieldLike[],
     data.publicInputs as unknown as FieldLike[],
-    data.vkHash as unknown as FieldLike
   );
 
   await captureProfile(interaction, opts, "recursion");
