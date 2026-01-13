@@ -10,7 +10,8 @@ This is a collection of Aztec smart contract examples written in Noir, designed 
 
 - **Aztec**: A privacy-first Layer 2 on Ethereum using zero-knowledge proofs
 - **Noir**: A domain-specific language for writing zero-knowledge circuits
-- **aztec-nargo**: Aztec's fork of the Noir compiler for compiling Aztec contracts
+- **nargo**: The Noir compiler for compiling vanilla Noir circuits (install via [noirup](https://github.com/noir-lang/noirup))
+- **aztec compile**: Aztec CLI command for compiling Aztec contracts (includes post-processing)
 - **aztec-wallet**: CLI tool for interacting with Aztec contracts
 - **Bun**: Fast JavaScript runtime (used in recursive_verification example)
 - **Node.js/npm**: JavaScript runtime (used in starter-token example)
@@ -61,11 +62,24 @@ aztec-up 2.0.2  # For starter-token
 From a contract directory containing `Nargo.toml`:
 
 ```bash
-# Compile an Aztec contract
-aztec-nargo compile
+# Compile an Aztec contract (includes post-processing)
+aztec compile
 
 # For recursive_verification example (using Bun)
-bun ccc  # Compiles contract, post-processes, and generates TypeScript bindings
+bun ccc  # Compiles contract and generates TypeScript bindings
+```
+
+### Building Vanilla Noir Circuits
+
+For vanilla Noir circuits (not Aztec contracts), install nargo separately:
+
+```bash
+# Install nargo via noirup
+curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/install | bash
+noirup -v 1.0.0-beta.15
+
+# Compile a vanilla Noir circuit
+nargo compile
 ```
 
 ### Running Local Development Environment
@@ -139,22 +153,25 @@ Complete workflow for the proof verification example:
 cd recursive_verification
 bun install
 
-# 2. Compile the Noir circuit
-cd circuit && aztec-nargo compile && cd ..
+# 2. Install nargo for vanilla Noir circuit compilation
+noirup -v 1.0.0-beta.15
 
-# 3. Compile the Aztec contract
-bun ccc  # Runs: aztec-nargo compile && aztec-postprocess-contract && aztec codegen
+# 3. Compile the Noir circuit
+cd circuit && nargo compile && cd ..
 
-# 4. Generate proof data (UltraHonk proof, verification key, public inputs)
+# 4. Compile the Aztec contract
+bun ccc  # Runs: aztec compile && aztec codegen
+
+# 5. Generate proof data (UltraHonk proof, verification key, public inputs)
 bun data  # Creates data.json with proof for x=1, y=2
 
-# 5. Start Aztec local network (in separate terminal)
+# 6. Start Aztec local network (in separate terminal)
 aztec start --local-network
 
-# 6. Deploy contract and verify proof on-chain
+# 7. Deploy contract and verify proof on-chain
 bun recursion  # Deploys ValueNotEqual contract and verifies proof
 
-# 7. Run tests
+# 8. Run tests
 bun test
 
 # Optional: Run circuit tests
@@ -168,7 +185,7 @@ cd circuit && nargo test
 cd starter-token/reference
 
 # Build the contract
-cd contract && aztec-nargo compile && cd ..
+cd contract && aztec compile && cd ..
 
 # Build and run TypeScript client
 cd ts
@@ -290,7 +307,7 @@ Steps:
 
 ### Issue: "Cannot find module './contract/artifacts/'"
 
-**Solution**: Run `bun ccc` or `aztec-nargo compile` to generate contract artifacts
+**Solution**: Run `bun ccc` or `aztec compile` to generate contract artifacts
 
 ### Issue: "Failed to connect to PXE"
 

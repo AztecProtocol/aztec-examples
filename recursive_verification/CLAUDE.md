@@ -29,9 +29,14 @@ aztec start --local-network
 
 ### Circuit Development
 
+Vanilla Noir circuits require `nargo` (install via [noirup](https://github.com/noir-lang/noirup)):
+
 ```bash
+# Install nargo
+noirup -v 1.0.0-beta.15
+
 # Compile the Noir circuit
-cd circuit && aztec-nargo compile
+cd circuit && nargo compile
 
 # Execute the circuit (generate witness)
 cd circuit && nargo execute
@@ -45,7 +50,7 @@ cd circuit && nargo test
 ```bash
 # Compile contract, postprocess, and generate TypeScript bindings
 bun ccc
-# This runs: cd contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o artifacts
+# This runs: cd contract && aztec compile && aztec codegen target -o artifacts
 
 # Generate proof data (vk, proof, public inputs) for contract verification
 bun data

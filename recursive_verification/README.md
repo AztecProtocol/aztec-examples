@@ -17,6 +17,7 @@ This project implements:
 
 - [Bun](https://bun.sh/) runtime (v1.0 or higher)
 - [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.20251212)
+- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.15) - for compiling vanilla Noir circuits
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -65,6 +66,13 @@ aztec-up 3.0.0-devnet.20251212
 ```
 
 This ensures compatibility with the contract dependencies.
+
+### Install Nargo (for vanilla Noir circuits):
+
+```bash
+curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/install | bash
+noirup -v 1.0.0-beta.15
+```
 
 ## Build & Compile
 
@@ -155,19 +163,22 @@ bun install
 # 2. Setup Aztec
 aztec-up 3.0.0-devnet.20251212
 
-# 3. Compile circuit
-cd circuit && aztec-nargo compile && cd ..
+# 3. Install nargo for vanilla Noir circuit compilation
+noirup -v 1.0.0-beta.15
 
-# 4. Compile contract
+# 4. Compile circuit
+cd circuit && nargo compile && cd ..
+
+# 5. Compile contract
 bun ccc
 
-# 5. Generate proof data
+# 6. Generate proof data
 bun data
 
-# 6. Start local network (in a new terminal)
+# 7. Start local network (in a new terminal)
 aztec start --local-network
 
-# 7. Deploy and verify (in original terminal)
+# 8. Deploy and verify (in original terminal)
 bun recursion
 ```
 
@@ -225,7 +236,7 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
 4. **"Proof verification failed"**
 
    - Ensure you've run `bun data` after any circuit changes
-   - Verify the circuit was compiled with `cd circuit && aztec-nargo compile`
+   - Verify the circuit was compiled with `cd circuit && nargo compile`
 
 5. **Memory issues during proof generation**
 
@@ -245,7 +256,7 @@ If you encounter issues, try a clean rebuild:
 rm -rf circuit/target contract/target contract/artifacts data.json
 
 # Rebuild everything
-cd circuit && aztec-nargo compile && cd ..
+cd circuit && nargo compile && cd ..
 bun ccc
 bun data
 ```
