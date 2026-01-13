@@ -71,7 +71,7 @@ This ensures compatibility with the contract dependencies.
 ### 1. Compile the Noir Circuit
 
 ```bash
-cd circuit && aztec-nargo compile
+cd circuit && nargo compile
 ```
 
 This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` containing the circuit bytecode.
@@ -79,7 +79,7 @@ This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` co
 ### 2. Execute the Circuit
 
 ```bash
-cd circuit && aztec-nargo execute
+cd circuit && nargo execute
 ```
 
 Generates a witness for testing the circuit with default inputs (defined in `circuit/Prover.toml`).

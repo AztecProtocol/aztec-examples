@@ -5,7 +5,7 @@
   "scripts": {
     "clean": "rm -rf store",
     "cli": "bun run cli.ts",
-    "ccc": "cd contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o artifacts",
+    "ccc": "cd contract && aztec compile && aztec codegen target -o artifacts",
     "data": "bun run scripts/generate_data.ts",
     "recursion": "tsx scripts/run_recursion.ts",
     "test": "bun clean && bun test",
