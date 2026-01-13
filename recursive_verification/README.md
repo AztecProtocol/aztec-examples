@@ -11,12 +11,12 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `3.0.0-devnet.4`
+**Aztec Version**: `3.0.0-devnet.20251212`
 
 ## Prerequisites
 
 - [Bun](https://bun.sh/) runtime (v1.0 or higher)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.4)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.20251212)
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -61,7 +61,7 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 3.0.0-devnet.4
+aztec-up 3.0.0-devnet.20251212
 ```
 
 This ensures compatibility with the contract dependencies.
@@ -108,7 +108,7 @@ This runs `scripts/generate_data.ts` which:
 
 - Executes the circuit with inputs x=1, y=2
 - Generates an UltraHonk proof using Barretenberg
-- Saves proof data to `data.json` (457 field elements for proof, 115 for VK)
+- Saves proof data to `data.json` (508 field elements for proof, 115 for VK)
 
 ## Deploy and Verify On-Chain
 
@@ -153,7 +153,7 @@ For a fresh setup, run these commands in order:
 bun install
 
 # 2. Setup Aztec
-aztec-up 3.0.0-devnet.4
+aztec-up 3.0.0-devnet.20251212
 
 # 3. Compile circuit
 cd circuit && aztec-nargo compile && cd ..
@@ -254,8 +254,9 @@ bun data
 
 1. **Circuit**: The Noir circuit in `circuit/src/main.nr` creates a zero-knowledge proof that two values are not equal
 2. **Proof Generation**: Barretenberg generates an UltraHonk proof from the circuit execution
-3. **Contract**: The Aztec contract uses `std::verify_proof_with_type` to verify the proof on-chain
-4. **Privacy**: The contract uses private state (`EasyPrivateUint`) to maintain counters secretly
+3. **Contract**: The Aztec contract uses `bb_proof_verification::verify_honk_proof` to verify the proof on-chain
+4. **VK Hash Storage**: The verification key hash is stored in contract storage during initialization and read during proof verification
+5. **Counter Management**: The contract maintains public counters per user using `PublicMutable` storage
 
 ## Additional Scripts
 

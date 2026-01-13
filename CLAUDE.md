@@ -52,7 +52,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 3.0.0-devnet.4  # For recursive_verification
+aztec-up 3.0.0-devnet.20251212  # For recursive_verification
 aztec-up 2.0.2  # For starter-token
 ```
 
@@ -199,9 +199,10 @@ Key considerations:
 The recursive verification example demonstrates:
 
 - **Off-chain proof generation**: Noir circuits compiled and executed with Barretenberg
-- **On-chain verification**: Using `std::verify_proof_with_type` in Aztec contracts
-- **UltraHonk proving system**: Generates proofs with 457 field elements, verification keys with 115 fields
-- **Private state management**: Using `EasyPrivateUint` for private counters
+- **On-chain verification**: Using `bb_proof_verification::verify_honk_proof` in Aztec contracts
+- **UltraHonk proving system**: Generates proofs with 508 field elements, verification keys with 115 fields
+- **VK Hash Storage**: Verification key hash stored in `PublicImmutable` storage, readable from private context
+- **Public state management**: Using `PublicMutable` for per-user counters
 
 ### Token Pattern (starter-token)
 
@@ -245,7 +246,7 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 
 **Version Compatibility**: Different examples may use different Aztec versions:
 
-- `recursive_verification`: v3.0.0-devnet.4
+- `recursive_verification`: v3.0.0-devnet.20251212
 
 ### JavaScript/TypeScript Dependencies
 

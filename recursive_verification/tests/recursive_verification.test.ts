@@ -40,10 +40,7 @@ describe("Recursive Verification", () => {
     testWallet = await TestWallet.create(aztecNode, config)
 
     // Register the sponsored FPC contract
-    await testWallet.registerContract({
-      instance: sponsoredFPC,
-      artifact: SponsoredFPCContract.artifact,
-    })
+    await testWallet.registerContract(sponsoredFPC, SponsoredFPCContract.artifact)
     console.log('TestWallet configured')
 
     // Create owner account
@@ -98,7 +95,7 @@ describe("Recursive Verification", () => {
       fee: { paymentMethod: sponsoredPaymentMethod },
     }
 
-    // Call increment with proof data
+    // Call increment with proof data (vk_hash is read from storage)
     const tx = await valueNotEqualContract.methods.increment(
       ownerAddress,
       data.vkAsFields as unknown as FieldLike[],

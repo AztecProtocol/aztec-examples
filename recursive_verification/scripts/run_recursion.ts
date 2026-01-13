@@ -55,10 +55,7 @@ export const setupWallet = async (): Promise<TestWallet> => {
     config.dataDirectory = "pxe";
     config.proverEnabled = true;
     let wallet = await TestWallet.create(aztecNode, config);
-    await wallet.registerContract({
-      instance: sponsoredFPC,
-      artifact: SponsoredFPCContract.artifact,
-    });
+    await wallet.registerContract(sponsoredFPC, SponsoredFPCContract.artifact);
 
     return wallet;
   } catch (error) {
