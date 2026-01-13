@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 3.0.0-devnet.4 to verify Noir proofs within smart contracts on the Aztec network.
+This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 3.0.0-devnet.20251212 to verify Noir proofs within smart contracts on the Aztec network.
 
 The project consists of:
 
@@ -23,15 +23,20 @@ bun install
 # Install/update Aztec tools
 aztec-up
 
-# Start Aztec Sandbox (required for contract deployment)
-aztec start --sandbox
+# Start Aztec local network (required for contract deployment)
+aztec start --local-network
 ```
 
 ### Circuit Development
 
+Vanilla Noir circuits require `nargo` (install via [noirup](https://github.com/noir-lang/noirup)):
+
 ```bash
+# Install nargo
+noirup -v 1.0.0-beta.15
+
 # Compile the Noir circuit
-cd circuit && aztec-nargo compile
+cd circuit && nargo compile
 
 # Execute the circuit (generate witness)
 cd circuit && nargo execute
@@ -45,7 +50,7 @@ cd circuit && nargo test
 ```bash
 # Compile contract, postprocess, and generate TypeScript bindings
 bun ccc
-# This runs: cd contract && aztec-nargo compile && aztec-postprocess-contract && aztec codegen target -o artifacts
+# This runs: cd contract && aztec compile && aztec codegen target -o artifacts
 
 # Generate proof data (vk, proof, public inputs) for contract verification
 bun data
@@ -67,11 +72,12 @@ bun recursion
 ### Contract (`contract/`)
 
 - **`src/main.nr`**: Aztec smart contract with:
-  - `initialize()`: Sets up counter with initial value for an owner
-  - `increment()`: Verifies a Noir proof and increments the counter
+  - `constructor()`: Sets up counter with initial value for an owner and stores the VK hash
+  - `increment()`: Verifies a Noir proof (reads VK hash from storage) and increments the counter
   - `get_counter()`: Reads current counter value for an owner
-- Uses Honk proof verification (457 field elements for proof, 115 for verification key)
-- Stores private counters using `EasyPrivateUint` from Aztec-nr libraries
+- Uses `bb_proof_verification::verify_honk_proof` for proof verification (508 field elements for proof, 115 for verification key)
+- Stores VK hash in `PublicImmutable` storage (readable from private context)
+- Stores public counters per user using `PublicMutable` from Aztec-nr libraries
 
 ### Scripts (`scripts/`)
 
@@ -104,4 +110,4 @@ bun recursion
 ## Testing
 
 - Circuit tests: Use `nargo test` in the circuit directory
-- Contract verification: Run the full flow with `bun recursion` after starting the sandbox
+- Contract verification: Run the full flow with `bun recursion` after starting the local network

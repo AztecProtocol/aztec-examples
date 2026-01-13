@@ -55,7 +55,7 @@ aztec-up 3.0.0-devnet.4
 aztec-nargo compile
 
 # Start local Aztec network
-aztec start --sandbox
+aztec start --local-network
 
 # Run tests with Testing Execution Environment (TXE)
 aztec test

@@ -11,12 +11,13 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `3.0.0-devnet.4`
+**Aztec Version**: `3.0.0-devnet.20251212`
 
 ## Prerequisites
 
 - [Bun](https://bun.sh/) runtime (v1.0 or higher)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.4)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.20251212)
+- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.15) - for compiling vanilla Noir circuits
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -61,17 +62,24 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 3.0.0-devnet.4
+aztec-up 3.0.0-devnet.20251212
 ```
 
 This ensures compatibility with the contract dependencies.
+
+### Install Nargo (for vanilla Noir circuits):
+
+```bash
+curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/install | bash
+noirup -v 1.0.0-beta.15
+```
 
 ## Build & Compile
 
 ### 1. Compile the Noir Circuit
 
 ```bash
-cd circuit && aztec-nargo compile
+cd circuit && nargo compile
 ```
 
 This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` containing the circuit bytecode.
@@ -79,7 +87,7 @@ This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` co
 ### 2. Execute the Circuit
 
 ```bash
-cd circuit && aztec-nargo execute
+cd circuit && nargo execute
 ```
 
 Generates a witness for testing the circuit with default inputs (defined in `circuit/Prover.toml`).
@@ -108,19 +116,19 @@ This runs `scripts/generate_data.ts` which:
 
 - Executes the circuit with inputs x=1, y=2
 - Generates an UltraHonk proof using Barretenberg
-- Saves proof data to `data.json` (457 field elements for proof, 115 for VK)
+- Saves proof data to `data.json` (508 field elements for proof, 115 for VK)
 
 ## Deploy and Verify On-Chain
 
-### 1. Start Aztec Sandbox
+### 1. Start Aztec Local Network
 
 Start the local Aztec network:
 
 ```bash
-aztec start --sandbox
+aztec start --local-network
 ```
 
-Keep this running in a separate terminal. The sandbox runs at `http://localhost:8080`.
+Keep this running in a separate terminal. The local network runs at `http://localhost:8080`.
 
 ### 2. Deploy Contract and Verify Proof
 
@@ -153,21 +161,24 @@ For a fresh setup, run these commands in order:
 bun install
 
 # 2. Setup Aztec
-aztec-up 3.0.0-devnet.4
+aztec-up 3.0.0-devnet.20251212
 
-# 3. Compile circuit
-cd circuit && aztec-nargo compile && cd ..
+# 3. Install nargo for vanilla Noir circuit compilation
+noirup -v 1.0.0-beta.15
 
-# 4. Compile contract
+# 4. Compile circuit
+cd circuit && nargo compile && cd ..
+
+# 5. Compile contract
 bun ccc
 
-# 5. Generate proof data
+# 6. Generate proof data
 bun data
 
-# 6. Start sandbox (in a new terminal)
-aztec start --sandbox
+# 7. Start local network (in a new terminal)
+aztec start --local-network
 
-# 7. Deploy and verify (in original terminal)
+# 8. Deploy and verify (in original terminal)
 bun recursion
 ```
 
@@ -219,13 +230,13 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
 
 3. **"Failed to connect to PXE"**
 
-   - Ensure the Aztec sandbox is running: `aztec start --sandbox`
+   - Ensure the Aztec local network is running: `aztec start --local-network`
    - Check it's accessible at `http://localhost:8080`
 
 4. **"Proof verification failed"**
 
    - Ensure you've run `bun data` after any circuit changes
-   - Verify the circuit was compiled with `cd circuit && aztec-nargo compile`
+   - Verify the circuit was compiled with `cd circuit && nargo compile`
 
 5. **Memory issues during proof generation**
 
@@ -245,7 +256,7 @@ If you encounter issues, try a clean rebuild:
 rm -rf circuit/target contract/target contract/artifacts data.json
 
 # Rebuild everything
-cd circuit && aztec-nargo compile && cd ..
+cd circuit && nargo compile && cd ..
 bun ccc
 bun data
 ```
@@ -254,8 +265,9 @@ bun data
 
 1. **Circuit**: The Noir circuit in `circuit/src/main.nr` creates a zero-knowledge proof that two values are not equal
 2. **Proof Generation**: Barretenberg generates an UltraHonk proof from the circuit execution
-3. **Contract**: The Aztec contract uses `std::verify_proof_with_type` to verify the proof on-chain
-4. **Privacy**: The contract uses private state (`EasyPrivateUint`) to maintain counters secretly
+3. **Contract**: The Aztec contract uses `bb_proof_verification::verify_honk_proof` to verify the proof on-chain
+4. **VK Hash Storage**: The verification key hash is stored in contract storage during initialization and read during proof verification
+5. **Counter Management**: The contract maintains public counters per user using `PublicMutable` storage
 
 ## Additional Scripts
 

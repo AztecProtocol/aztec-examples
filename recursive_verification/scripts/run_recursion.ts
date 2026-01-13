@@ -55,14 +55,11 @@ export const setupWallet = async (): Promise<TestWallet> => {
     config.dataDirectory = "pxe";
     config.proverEnabled = true;
     let wallet = await TestWallet.create(aztecNode, config);
-    await wallet.registerContract({
-      instance: sponsoredFPC,
-      artifact: SponsoredFPCContract.artifact,
-    });
+    await wallet.registerContract(sponsoredFPC, SponsoredFPCContract.artifact);
 
     return wallet;
   } catch (error) {
-    console.error("Failed to setup sandbox:", error);
+    console.error("Failed to setup local network:", error);
     throw error;
   }
 };
@@ -82,7 +79,8 @@ async function main() {
   const valueNotEqual = await ValueNotEqualContract.deploy(
     testWallet,
     10,
-    accounts[0].item
+    accounts[0].item,
+    data.vkHash as unknown as FieldLike
   )
     .send({
       from: accounts[0].item,
@@ -100,7 +98,6 @@ async function main() {
     data.vkAsFields as unknown as FieldLike[],
     data.proofAsFields as unknown as FieldLike[],
     data.publicInputs as unknown as FieldLike[],
-    data.vkHash as unknown as FieldLike
   );
 
   await captureProfile(interaction, opts, "recursion");

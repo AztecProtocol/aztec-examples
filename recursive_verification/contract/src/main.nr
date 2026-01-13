@@ -2,28 +2,29 @@ use aztec::macros::aztec;
 
 #[aztec]
 pub contract ValueNotEqual {
+    // Sizes for bb_proof_verification
     global HONK_VK_SIZE: u32 = 115;
-    global HONK_PROOF_SIZE: u32 = 492 + 16;
+    global HONK_PROOF_SIZE: u32 = 508;
 
     use aztec::{
-        macros::{functions::{external, initializer}, storage::storage},
+        macros::{functions::{external, initializer, internal, only_self, view}, storage::storage},
         oracle::debug_log::debug_log_format,
         protocol_types::{address::AztecAddress, traits::ToField},
-        state_vars::Map,
+        state_vars::{Map, PublicImmutable, PublicMutable},
     };
-    use bb_proof_verification::verify_ultrahonkzk_proof;
-    use easy_private_state::EasyPrivateUint;
+    use bb_proof_verification::verify_honk_proof;
 
     #[storage]
     struct Storage<Context> {
-        counters: Map<AztecAddress, EasyPrivateUint<Context>, Context>,
+        counters: Map<AztecAddress, PublicMutable<Field, Context>, Context>,
+        vk_hash: PublicImmutable<Field, Context>,
     }
 
     #[initializer]
-    #[external("private")]
-    fn initialize(headstart: u64, owner: AztecAddress) {
-        let counters = storage.counters;
-        counters.at(owner).add(headstart, owner);
+    #[external("public")]
+    fn constructor(headstart: Field, owner: AztecAddress, vk_hash: Field) {
+        self.storage.counters.at(owner).write(headstart);
+        self.storage.vk_hash.initialize(vk_hash);
     }
 
     #[external("private")]
@@ -32,22 +33,23 @@ pub contract ValueNotEqual {
         verification_key: [Field; HONK_VK_SIZE],
         proof: [Field; HONK_PROOF_SIZE],
         public_inputs: [Field; 1],
-        vk_hash: Field,
     ) {
         debug_log_format("Incrementing counter for owner {0}", [owner.to_field()]);
-        verify_ultrahonkzk_proof(verification_key, proof, public_inputs, vk_hash);
-        ValueNotEqual::at(context.this_address()).emit_in_public(12345).enqueue(&mut context);
-        let counters = storage.counters;
-        counters.at(owner).add(1, owner);
+        let vk_hash = self.storage.vk_hash.read();
+        verify_honk_proof(verification_key, proof, public_inputs, vk_hash);
+        self.enqueue_self._increment_public(owner);
     }
 
+    #[only_self]
     #[external("public")]
-    fn emit_in_public(n: Field) {
-        context.push_note_hash(n);
+    fn _increment_public(owner: AztecAddress) {
+        let current = self.storage.counters.at(owner).read();
+        self.storage.counters.at(owner).write(current + 1);
     }
 
-    #[external("utility")]
-    unconstrained fn get_counter(owner: AztecAddress) -> Field {
-        storage.counters.at(owner).get_value()
+    #[view]
+    #[external("public")]
+    fn get_counter(owner: AztecAddress) -> Field {
+        self.storage.counters.at(owner).read()
     }
 }

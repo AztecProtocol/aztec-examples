@@ -7,15 +7,15 @@ echo "========================================="
 echo "Recursive Verification Test Runner"
 echo "========================================="
 
-# Check if Aztec sandbox is running
+# Check if Aztec local network is running
 echo ""
-echo "Checking Aztec sandbox status..."
+echo "Checking Aztec local network status..."
 if ! curl -s http://localhost:8080/status > /dev/null 2>&1; then
-    echo "❌ Aztec sandbox is not running!"
-    echo "Please start it with: aztec start --sandbox"
+    echo "❌ Aztec local network is not running!"
+    echo "Please start it with: aztec start --local-network"
     exit 1
 else
-    echo "✅ Aztec sandbox is running"
+    echo "✅ Aztec local network is running"
 fi
 
 # Compile the Noir circuit
