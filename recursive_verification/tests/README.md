@@ -4,9 +4,9 @@ This directory contains tests for the recursive verification proof system using 
 
 ## Prerequisites
 
-1. Ensure the Aztec sandbox is running:
+1. Ensure the Aztec local network is running:
 ```bash
-aztec start --sandbox
+aztec start --local-network
 ```
 
 2. Compile the contracts and generate proof data:
@@ -61,14 +61,14 @@ Each test case:
 
 If tests fail:
 
-1. Check the Aztec sandbox is running: `aztec status`
+1. Check the Aztec local network is running: `aztec status`
 2. Verify proof data exists: `ls ../data.json`
 3. Ensure contracts are compiled: `ls ../contract/artifacts/`
 4. Check PXE connection at http://localhost:8080
 
 ## Notes
 
-- Tests require the Aztec sandbox to be running at `http://localhost:8080`
+- Tests require the Aztec local network to be running at `http://localhost:8080`
 - Proof verification can take 10-30 seconds depending on system resources
 - The test suite uses the same proof data (`data.json`) as the original script
 - Each test is independent and can be run in isolation

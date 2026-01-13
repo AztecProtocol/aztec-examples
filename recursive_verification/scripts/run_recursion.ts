@@ -59,7 +59,7 @@ export const setupWallet = async (): Promise<TestWallet> => {
 
     return wallet;
   } catch (error) {
-    console.error("Failed to setup sandbox:", error);
+    console.error("Failed to setup local network:", error);
     throw error;
   }
 };

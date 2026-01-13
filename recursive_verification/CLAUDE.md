@@ -23,8 +23,8 @@ bun install
 # Install/update Aztec tools
 aztec-up
 
-# Start Aztec Sandbox (required for contract deployment)
-aztec start --sandbox
+# Start Aztec local network (required for contract deployment)
+aztec start --local-network
 ```
 
 ### Circuit Development
@@ -105,4 +105,4 @@ bun recursion
 ## Testing
 
 - Circuit tests: Use `nargo test` in the circuit directory
-- Contract verification: Run the full flow with `bun recursion` after starting the sandbox
+- Contract verification: Run the full flow with `bun recursion` after starting the local network

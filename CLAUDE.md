@@ -71,11 +71,11 @@ bun ccc  # Compiles contract, post-processes, and generates TypeScript bindings
 ### Running Local Development Environment
 
 ```bash
-# Start Aztec sandbox (node + PXE)
-aztec start --sandbox
+# Start Aztec local network (node + PXE)
+aztec start --local-network
 
 # Start without PXE (when using aztec-wallet)
-NO_PXE=true aztec start --sandbox
+NO_PXE=true aztec start --local-network
 
 # Import test accounts to aztec-wallet
 aztec-wallet import-test-accounts
@@ -148,8 +148,8 @@ bun ccc  # Runs: aztec-nargo compile && aztec-postprocess-contract && aztec code
 # 4. Generate proof data (UltraHonk proof, verification key, public inputs)
 bun data  # Creates data.json with proof for x=1, y=2
 
-# 5. Start Aztec sandbox (in separate terminal)
-aztec start --sandbox
+# 5. Start Aztec local network (in separate terminal)
+aztec start --local-network
 
 # 6. Deploy contract and verify proof on-chain
 bun recursion  # Deploys ValueNotEqual contract and verifies proof
@@ -261,7 +261,7 @@ TypeScript projects use:
 
 - **Node.js/npm**: For starter-token TypeScript examples (v20+)
 - **Bun**: Required for recursive_verification example (faster alternative to Node.js)
-- **Docker**: Required for running Aztec sandbox
+- **Docker**: Required for running Aztec local network
 - **Memory**: 8GB+ RAM recommended for proof generation
 
 ## CI/CD
@@ -280,7 +280,7 @@ Steps:
 
 1. Sets up Node.js (v22) and Bun
 2. Installs Aztec CLI
-3. Starts Aztec sandbox
+3. Starts Aztec local network
 4. Compiles circuits and contracts
 5. Generates proof data
 6. Runs integration tests
@@ -294,7 +294,7 @@ Steps:
 
 ### Issue: "Failed to connect to PXE"
 
-**Solution**: Ensure Aztec sandbox is running with `aztec start --sandbox`
+**Solution**: Ensure Aztec local network is running with `aztec start --local-network`
 
 ### Issue: "Proof verification failed"
 
@@ -314,4 +314,4 @@ Steps:
 2. **Testing**: Run tests locally before pushing changes
 3. **Documentation**: Update READMEs when modifying examples
 4. **Clean Builds**: When encountering issues, try removing `target/`, `artifacts/`, and `node_modules/` directories
-5. **Sandbox Management**: Always ensure sandbox is running when deploying/testing contracts
+5. **Local Network Management**: Always ensure local network is running when deploying/testing contracts

@@ -50,16 +50,16 @@ flowchart TB
     end
 
     subgraph "6. Aztec Network"
-        SANDBOX[Aztec Sandbox<br/>localhost:8080]
+        LOCAL_NETWORK[Aztec Local Network<br/>localhost:8080]
         PXE[Private Execution<br/>Environment]
-        SANDBOX --> PXE
-        CONTRACT -->|Deployed to| SANDBOX
+        LOCAL_NETWORK --> PXE
+        CONTRACT -->|Deployed to| LOCAL_NETWORK
     end
 
     style NC fill:#e1f5fe
     style CONTRACT fill:#c8e6c9
     style PROOF_DATA fill:#fff9c4
-    style SANDBOX fill:#f3e5f5
+    style LOCAL_NETWORK fill:#f3e5f5
 ```
 
 ### Data Flow Sequence
@@ -70,7 +70,7 @@ sequenceDiagram
     participant Circuit as Noir Circuit
     participant BB as Barretenberg
     participant Contract as Aztec Contract
-    participant Sandbox as Aztec Sandbox
+    participant LocalNet as Aztec Local Network
 
     Dev->>Circuit: 1. Define proof logic (x ≠ y)
     Dev->>Circuit: 2. Compile circuit
@@ -81,10 +81,10 @@ sequenceDiagram
     BB->>Dev: Return proof, VK, public inputs
 
     Dev->>Contract: 4. Compile smart contract
-    Dev->>Sandbox: 5. Start local network
+    Dev->>LocalNet: 5. Start local network
 
-    Dev->>Sandbox: 6. Deploy contract
-    Sandbox-->>Dev: Contract address
+    Dev->>LocalNet: 6. Deploy contract
+    LocalNet-->>Dev: Contract address
 
     Dev->>Contract: 7. Call increment() with proof
     Contract->>Contract: Verify proof on-chain

@@ -112,15 +112,15 @@ This runs `scripts/generate_data.ts` which:
 
 ## Deploy and Verify On-Chain
 
-### 1. Start Aztec Sandbox
+### 1. Start Aztec Local Network
 
 Start the local Aztec network:
 
 ```bash
-aztec start --sandbox
+aztec start --local-network
 ```
 
-Keep this running in a separate terminal. The sandbox runs at `http://localhost:8080`.
+Keep this running in a separate terminal. The local network runs at `http://localhost:8080`.
 
 ### 2. Deploy Contract and Verify Proof
 
@@ -164,8 +164,8 @@ bun ccc
 # 5. Generate proof data
 bun data
 
-# 6. Start sandbox (in a new terminal)
-aztec start --sandbox
+# 6. Start local network (in a new terminal)
+aztec start --local-network
 
 # 7. Deploy and verify (in original terminal)
 bun recursion
@@ -219,7 +219,7 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
 
 3. **"Failed to connect to PXE"**
 
-   - Ensure the Aztec sandbox is running: `aztec start --sandbox`
+   - Ensure the Aztec local network is running: `aztec start --local-network`
    - Check it's accessible at `http://localhost:8080`
 
 4. **"Proof verification failed"**
