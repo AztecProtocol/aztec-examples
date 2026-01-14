@@ -1,23 +1,42 @@
-# Note Hash Creation and Proof of Delivery
+# Note Hash Computation Verification
 
-A demonstration of creating private notes in Aztec smart contracts and computing their cryptographic note hashes. This project showcases how to create notes, track their lifecycle, and verify the correct computation of note hashes including siloing and uniqueness guarantees.
+A demonstration of creating private notes in Aztec smart contracts with controlled randomness, enabling verification that computed note hashes match on-chain note hashes. This project showcases the complete note hash computation chain in Aztec v3.
 
 ## Overview
 
 This project implements:
 
-- **Aztec Contract**: A smart contract that creates private notes for users
-- **Note Hash Computation**: Scripts to compute note hashes, siloed note hashes, and unique note hashes
-- **Note Tracking**: Demonstration of how notes are created, stored, and retrieved in Aztec
-- **Hash Verification**: Verification that computed note hashes match on-chain note hashes
+- **Custom UintNote**: A note type with controllable randomness (default: 6969) for reproducible hash computation
+- **Note Hash Computation**: Scripts demonstrating the v3 note hash formula
+- **Hash Verification**: Tests that verify computed unique note hashes match on-chain hashes
 
-**Aztec Version**: `2.0.3`
+**Aztec Version**: `3.0.0-devnet.20251212`
+
+## Note Hash Computation Formula (v3)
+
+The v3 note hash is computed in stages:
+
+```
+1. commitment = poseidon2([owner, storage_slot, randomness], GENERATOR_INDEX__NOTE_HASH)
+2. note_hash = poseidon2([commitment, value], GENERATOR_INDEX__NOTE_HASH)
+3. siloed_note_hash = poseidon2([contract_address, note_hash], GENERATOR_INDEX__NOTE_HASH)
+4. unique_note_hash = poseidon2([nonce, siloed_note_hash], GENERATOR_INDEX__NOTE_HASH)
+```
+
+The unique note hash is what gets stored on-chain in the note hash tree.
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v20 or higher)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 2.0.3)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart)
+- [Yarn](https://yarnpkg.com/) package manager
 - Linux/macOS (Windows users can use WSL2)
+
+To set the correct Aztec version:
+
+```bash
+aztec-up 3.0.0-devnet.20251212
+```
 
 ## Project Structure
 
@@ -26,21 +45,19 @@ This project implements:
 ├── sample-contract/      # Aztec smart contract
 │   ├── src/main.nr      # GettingStarted contract with note creation
 │   └── Nargo.toml       # Contract configuration
+├── uint-note/           # Custom UintNote library with controlled randomness
+│   ├── src/uint_note.nr # UintNote with create_note_with_randomness function
+│   └── Nargo.toml       # Library configuration
 ├── contract/
 │   └── artifacts/       # Generated TypeScript bindings
-├── circuits/            # Noir circuit (if needed for future extensions)
-│   ├── src/main.nr     # Circuit logic
-│   └── Nargo.toml      # Circuit configuration
 ├── scripts/             # TypeScript utilities
-│   ├── generate_data.ts # Creates notes and computes note hashes
-│   └── create_note.ts   # Alias for generate_data.ts
+│   └── generate_data.ts # Creates notes and verifies hash computation
 ├── tests/               # Integration tests
-│   └── note_creation.test.ts  # Comprehensive test suite
+│   └── note_creation.test.ts  # Hash verification test suite
 ├── package.json         # Node.js package configuration
 ├── tsconfig.json        # TypeScript configuration
 ├── jest.config.js       # Jest test configuration
-├── data.json           # Generated note hash data (created by `npm run data`)
-└── run-tests.sh        # Local test runner script
+└── data.json           # Generated note hash data (created by `yarn data`)
 ```
 
 ## Installation
@@ -48,7 +65,7 @@ This project implements:
 ### Install dependencies:
 
 ```bash
-npm install
+yarn install
 ```
 
 ### Install Aztec CLI:
@@ -60,84 +77,45 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 2.0.3
+aztec-up 3.0.0-devnet.20251212
 ```
-
-This ensures compatibility with the contract dependencies.
 
 ## Build & Compile
 
-### 1. Compile the Aztec Contract
+### Compile the Aztec Contract and Generate TypeScript Bindings
 
 ```bash
-cd sample-contract && aztec-nargo compile && cd ..
-```
-
-This compiles `sample-contract/src/main.nr` and generates the contract artifacts.
-
-### 2. Post-process Contract and Generate TypeScript Bindings
-
-```bash
-npm run ccc
+yarn ccc
 ```
 
 This command:
 
-- Compiles the Aztec contract (if not already compiled)
-- Post-processes for Aztec deployment
+- Compiles the Aztec contract using `aztec compile`
 - Generates TypeScript bindings in `contract/artifacts/`
 
-## Generate Note Hash Data
+## Running the Example
 
-Create a note and compute all related hashes:
-
-```bash
-npm run data
-```
-
-This runs `scripts/generate_data.ts` which:
-
-- Connects to the Aztec sandbox
-- Deploys the GettingStarted contract
-- Creates a private note for a user with value 69
-- Computes the note hash components:
-  - Commitment (from owner, randomness, and storage slot)
-  - Note hash (from commitment and value)
-  - Siloed note hash (scoped to contract address)
-  - Unique note hash (with nonce for uniqueness)
-- Verifies computed hash matches the on-chain note hash
-- Saves all data to `data.json`
-
-## Deploy and Create Notes
-
-### 1. Start Aztec Sandbox
+### 1. Start Aztec Local Network
 
 Start the local Aztec network:
 
 ```bash
-aztec start --sandbox
+aztec start --local-network
 ```
 
-Keep this running in a separate terminal. The sandbox runs at `http://localhost:8080`.
+Keep this running in a separate terminal. The network runs at `http://localhost:8080`.
 
-### 2. Create Note and Generate Data
+### 2. Run Tests
 
 ```bash
-npm run create-note
+yarn test
 ```
 
-This is an alias for `npm run data` and runs the same workflow.
-
-Expected output:
-
-```
-CONTRACT DEPLOYED AT 0x...
-TX REQUEST HASH 0x...
-TX HASH 0x...
-NOTE HASH 0x...
-COMPUTED UNIQUE NOTE HASH 0x...
-ACTUAL UNIQUE NOTE HASH 0x...
-```
+The tests will:
+1. Deploy the GettingStarted contract
+2. Create a note with a known value and fixed randomness (6969)
+3. Compute the expected note hash using the v3 formula
+4. Verify that the computed hash matches the on-chain hash
 
 ## Complete Workflow
 
@@ -145,50 +123,103 @@ For a fresh setup, run these commands in order:
 
 ```bash
 # 1. Install dependencies
-npm install
+yarn install
 
 # 2. Setup Aztec
-aztec-up 2.0.3
+aztec-up 3.0.0-devnet.20251212
 
-# 3. Compile contract
-cd sample-contract && aztec-nargo compile && cd ..
+# 3. Compile contract and generate TypeScript bindings
+yarn ccc
 
-# 4. Generate TypeScript bindings
-npm run ccc
+# 4. Start local network (in a new terminal)
+aztec start --local-network
 
-# 5. Start sandbox (in a new terminal)
-aztec start --sandbox
-
-# 6. Create note and generate data (in original terminal)
-npm run data
+# 5. Run tests (in original terminal)
+yarn test
 ```
 
 ## Testing
 
 ### Run All Tests
 
-The project includes a comprehensive test suite for contract deployment, note creation, and hash computation:
+The project includes a comprehensive test suite for note hash verification:
 
 ```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode for development
-npm run test:watch
-
-# Run full test suite locally (includes compilation)
-./run-tests.sh
+yarn test
 ```
 
 ### Integration Tests
 
 The test suite (`tests/note_creation.test.ts`) includes:
 - Contract deployment verification
-- Note creation and hash computation tests
-- Verification that computed hashes match on-chain hashes
-- Multiple note creation for same user
-- Note creation for different users
-- Note viewing and retrieval
+- Note creation with fixed randomness
+- Note hash computation verification (computed hash matches on-chain)
+- Multiple note creation with different values
+
+## How It Works
+
+### Contract (sample-contract/src/main.nr)
+
+The GettingStarted contract creates notes with a fixed randomness value:
+
+```noir
+global NOTE_RANDOMNESS: Field = 6969;
+
+#[external("private")]
+fn create_note_for_user(value: u128) {
+    let note = UintNote::new(value);
+    create_note_with_randomness(
+        self.context,
+        self.context.msg_sender().unwrap(),
+        1,  // storage_slot
+        note,
+        NOTE_RANDOMNESS,
+    );
+}
+```
+
+### Custom UintNote (uint-note/src/uint_note.nr)
+
+The custom UintNote library provides `create_note_with_randomness` which bypasses the default random() call, enabling deterministic hash computation:
+
+```noir
+pub fn create_note_with_randomness<Note>(
+    context: &mut PrivateContext,
+    owner: AztecAddress,
+    storage_slot: Field,
+    note: Note,
+    randomness: Field,
+) where
+    Note: NoteType + NoteHash + Packable,
+{
+    let note_hash = note.compute_note_hash(owner, storage_slot, randomness);
+    notify_created_note(owner, storage_slot, randomness, ...);
+    context.push_note_hash(note_hash);
+}
+```
+
+### Hash Verification (tests/note_creation.test.ts)
+
+The test computes the same hash off-chain and verifies it matches:
+
+```typescript
+// v3 hash computation
+const commitment = await poseidon2HashWithSeparator(
+  [owner, storage_slot, randomness],
+  GENERATOR_INDEX__NOTE_HASH
+);
+const noteHash = await poseidon2HashWithSeparator(
+  [commitment, value],
+  GENERATOR_INDEX__NOTE_HASH
+);
+
+// Complete the chain: note_hash -> siloed -> unique
+const siloedNoteHash = await siloNoteHash(contractAddress, noteHash);
+const uniqueNoteHash = await computeUniqueNoteHash(nonce, siloedNoteHash);
+
+// Verify against on-chain
+expect(uniqueNoteHash).toBe(txEffect.data.noteHashes[0]);
+```
 
 ## Troubleshooting
 
@@ -196,28 +227,16 @@ The test suite (`tests/note_creation.test.ts`) includes:
 
 1. **"Cannot find module './contract/artifacts/GettingStarted'"**
 
-   - Run `npm run ccc` to generate the contract artifacts
+   - Run `yarn ccc` to generate the contract artifacts
 
-2. **"Cannot find txEffect from tx hash"**
+2. **"Failed to connect to PXE" or Network Errors**
 
-   - Ensure the transaction was successfully mined
-   - Check the Aztec sandbox logs for errors
-
-3. **"Failed to connect to PXE"**
-
-   - Ensure the Aztec sandbox is running: `aztec start --sandbox`
+   - Ensure the Aztec local network is running: `aztec start --local-network`
    - Check it's accessible at `http://localhost:8080`
 
-4. **Hash mismatch errors**
-
-   - Ensure the NOTE_RANDOMNESS value matches what was used in contract (6969)
-   - Verify the contract was compiled correctly
-   - Check that you're using the correct storage slot computation
-
-5. **TypeScript/Module errors**
-   - Run `npm install` to ensure all dependencies are installed
-   - Clear the dist folder: `rm -rf dist`
-   - Recompile with `npm run ccc`
+3. **TypeScript/Module errors**
+   - Run `yarn install` to ensure all dependencies are installed
+   - Recompile with `yarn ccc`
 
 ### Clean Rebuild
 
@@ -225,45 +244,20 @@ If you encounter issues, try a clean rebuild:
 
 ```bash
 # Remove generated files
-rm -rf sample-contract/target contract/artifacts data.json dist
+rm -rf sample-contract/target uint-note/target contract/artifacts node_modules
 
 # Rebuild everything
-cd sample-contract && aztec-nargo compile && cd ..
-npm run ccc
-npm run data
+yarn install
+yarn ccc
+yarn test
 ```
-
-## How It Works
-
-1. **Contract**: The GettingStarted contract creates private notes with UintNote
-2. **Note Creation**: Notes are created with a fixed randomness (6969) for reproducibility
-3. **Hash Computation**:
-   - Commitment = Poseidon2Hash(owner, randomness, storage_slot)
-   - Note Hash = Poseidon2Hash(commitment, value)
-   - Siloed Hash = Poseidon2Hash(contract_address, note_hash)
-   - Unique Hash = Poseidon2Hash(nonce, siloed_hash)
-4. **Verification**: The computed unique note hash is compared against the on-chain value
-
-## Note Hash Components
-
-The note hash computation involves several steps:
-
-- **Storage Slot**: Derived from the map key (user address) and base slot
-- **Commitment**: Hash of owner address, randomness, and storage slot
-- **Note Hash**: Hash of commitment and note value
-- **Note Hash Nonce**: Computed from the first nullifier and note index
-- **Siloed Note Hash**: Contract-scoped hash for isolation
-- **Unique Note Hash**: Final hash with nonce for uniqueness guarantee
 
 ## Available Scripts
 
-- `npm run ccc`: Compile contract and generate TypeScript artifacts
-- `npm run data`: Create note and generate hash data
-- `npm run create-note`: Alias for `npm run data`
-- `npm test`: Run integration test suite
-- `npm run test:watch`: Run tests in watch mode for development
-- `npm run clean`: Remove generated data files
-- `./run-tests.sh`: Run full test suite locally (includes compilation)
+- `yarn ccc`: Compile contract and generate TypeScript artifacts
+- `yarn test`: Run integration test suite
+- `yarn data`: Generate note data and verify hash computation
+- `yarn clean`: Remove generated data files
 
 ## Resources
 

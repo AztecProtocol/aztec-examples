@@ -34,10 +34,10 @@ An unconstrained utility function to view all custom notes for a given owner.
 
 ## Building
 
-Compile the contract using Nargo:
+Compile the contract using the Aztec CLI:
 
 ```bash
-nargo compile
+aztec compile
 ```
 
 ## Usage Example
@@ -46,14 +46,15 @@ nargo compile
 
 2. **Insert a custom note**:
 
-   ```noir
-   CustomNote.insert(field1, field2, field3, field4)
-   ```
+```rust
+CustomNote.insert(field1, field2, field3, field4)
+```
 
 3. **View notes for an address**:
-   ```noir
-   CustomNote.view_custom_notes(owner_address)
-   ```
+
+```rust
+CustomNote.view_custom_notes(owner_address)
+```
 
 ## Key Features
 
@@ -64,8 +65,13 @@ nargo compile
 
 ## Dependencies
 
-- Aztec Noir v3.0.0-nightly.20251107
-- Nargo >= 1.0.0
+- Aztec v3.0.0-devnet.20251212
+
+To set this version:
+
+```bash
+aztec-up 3.0.0-devnet.20251212
+```
 
 ## Project Structure
 

@@ -1,10 +1,10 @@
-use dep::aztec::macros::aztec;
+use aztec::macros::aztec;
 
 mod account_actions;
 
 #[aztec]
 pub contract PasswordAccount {
-    use dep::aztec::{
+    use aztec::{
         authwit::{
             auth::compute_authwit_nullifier,
             entrypoint::app::AppPayload,
@@ -16,11 +16,9 @@ pub contract PasswordAccount {
             get_nullifier_membership_witness::get_low_nullifier_membership_witness,
             notes::{get_sender_for_tags, set_sender_for_tags},
         },
-        protocol_types::address::AztecAddress,
+        protocol_types::{address::AztecAddress, hash::poseidon2_hash},
         state_vars::PublicImmutable,
     };
-
-    use dep::poseidon;
 
     use crate::account_actions::AccountActions;
 
@@ -33,7 +31,7 @@ pub contract PasswordAccount {
     #[external("private")]
     #[initializer]
     fn constructor(password: Field) {
-        let hashed_password = poseidon::poseidon2::Poseidon2::hash([password], 1);
+        let hashed_password = poseidon2_hash([password]);
         self.enqueue_self.set_hashed_password(hashed_password);
 
         // Safety: The sender for tags is only used to compute unconstrained shared secrets for emitting logs.
@@ -88,7 +86,7 @@ pub contract PasswordAccount {
 
         let hashed_password_from_account = storage.hashed_password.read();
 
-        let hashed_password = poseidon::poseidon2::Poseidon2::hash([password], 1);
+        let hashed_password = poseidon2_hash([password]);
 
         hashed_password_from_account == hashed_password
     }
@@ -103,7 +101,7 @@ pub contract PasswordAccount {
     unconstrained fn lookup_validity(consumer: AztecAddress, inner_hash: Field, password: Field) -> bool {
         let hashed_password_from_account = self.storage.hashed_password.read();
 
-        let hashed_password = poseidon::poseidon2::Poseidon2::hash([password], 1);
+        let hashed_password = poseidon2_hash([password]);
 
         let valid_in_private = hashed_password_from_account == hashed_password;
 

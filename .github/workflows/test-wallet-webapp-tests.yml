@@ -17,7 +17,7 @@ jobs:
     name: Test Wallet Webapp Tests
     runs-on: ubuntu-latest
     env:
-      AZTEC_VERSION: 3.0.0-devnet.5
+      AZTEC_VERSION: 3.0.0-devnet.20251212
 
     steps:
       - name: Checkout repository
@@ -43,23 +43,23 @@ jobs:
       - name: Update path
         run: echo "$HOME/.aztec/bin" >> $GITHUB_PATH
 
-      - name: Set Aztec version and start sandbox
+      - name: Set Aztec version and start local network
         run: |
           aztec-up ${{ env.AZTEC_VERSION }}
           docker tag aztecprotocol/aztec:${{ env.AZTEC_VERSION }} aztecprotocol/aztec:latest
-          aztec start --sandbox &
+          aztec start --local-network &
 
-      - name: Wait for sandbox to be ready
+      - name: Wait for local network to be ready
         run: |
-          echo "Waiting for sandbox to start..."
+          echo "Waiting for local network to start..."
           MAX_RETRIES=60
           for i in $(seq 1 $MAX_RETRIES); do
             if curl -s http://localhost:8080/status >/dev/null 2>&1; then
-              echo "✅ Sandbox is ready!"
+              echo "✅ Local network is ready!"
               break
             fi
             if [ $i -eq $MAX_RETRIES ]; then
-              echo "❌ Sandbox failed to start after $MAX_RETRIES attempts"
+              echo "❌ Local network failed to start after $MAX_RETRIES attempts"
               exit 1
             fi
             echo "Waiting... ($i/$MAX_RETRIES)"
@@ -91,7 +91,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          echo "Stopping Aztec sandbox..."
+          echo "Stopping Aztec local network..."
           pkill -f "aztec" || true
           docker stop $(docker ps -q) || true
           docker rm $(docker ps -a -q) || true
