@@ -1,21 +1,30 @@
 import { describe, expect, test, beforeAll } from '@jest/globals';
-import { TxStatus, Fr } from '@aztec/aztec.js';
+import { Fr } from '@aztec/aztec.js/fields';
 import { createAztecNodeClient, waitForNode } from '@aztec/aztec.js/node';
 import { AztecAddress } from '@aztec/aztec.js/addresses';
 import { getInitialTestAccountsData } from '@aztec/accounts/testing';
 import { TestWallet } from '@aztec/test-wallet/server';
 import type { TestWallet as TestWalletType } from '@aztec/test-wallet/server';
-import { GettingStartedContract, GettingStartedContractArtifact } from '../contract/artifacts/GettingStarted.js';
+import { computeNoteHashNonce, computeUniqueNoteHash, siloNoteHash } from '@aztec/stdlib/hash';
+import { poseidon2HashWithSeparator } from '@aztec/foundation/crypto/poseidon';
+import { GettingStartedContract } from '../contract/artifacts/GettingStarted.js';
 
 const NODE_URL = 'http://localhost:8080';
+
+// GENERATOR_INDEX__NOTE_HASH from Aztec protocol types
+const GENERATOR_INDEX__NOTE_HASH = 1;
+
+// Must match NOTE_RANDOMNESS in the contract
+const NOTE_RANDOMNESS = new Fr(6969);
+// Must match the storage_slot used in create_note_for_user
+const STORAGE_SLOT = new Fr(1);
 
 // Test timeout - note creation and hash computation can take some time
 const TEST_TIMEOUT = 120000; // 120 seconds
 
-describe('Note Creation and Balance Tracking', () => {
+describe('Note Hash Computation Verification', () => {
   let wallet: TestWalletType;
   let deployer: AztecAddress;
-  let user1: AztecAddress;
   let gettingStartedContract: GettingStartedContract;
 
   beforeAll(async () => {
@@ -40,16 +49,8 @@ describe('Note Creation and Balance Tracking', () => {
     );
     deployer = deployerAccount.address;
 
-    const user1Account = await wallet.createSchnorrAccount(
-      accountsData[1].secret,
-      accountsData[1].salt,
-      accountsData[1].signingKey
-    );
-    user1 = user1Account.address;
-
     console.log('Test accounts configured');
     console.info('Deployer address:', deployer.toString());
-    console.info('User1 address:', user1.toString());
   }, TEST_TIMEOUT);
 
   test('should deploy GettingStarted contract', async () => {
@@ -63,16 +64,8 @@ describe('Note Creation and Balance Tracking', () => {
     console.log('Contract deployed at address:', gettingStartedContract.address.toString());
   }, TEST_TIMEOUT);
 
-  test('should create note for user and track balance', async () => {
-    const NOTE_VALUE = 100n;
-
-    // Get initial balance (should be 0)
-    const initialBalance = await gettingStartedContract.methods
-      .get_user_balance(deployer)
-      .simulate({ from: deployer });
-
-    expect(initialBalance).toBe(0n);
-    console.log('Initial balance:', initialBalance.toString());
+  test('should create note and verify computed hash matches on-chain hash', async () => {
+    const NOTE_VALUE = 69n;
 
     // Create note
     const tx = await gettingStartedContract.methods
@@ -87,35 +80,84 @@ describe('Note Creation and Balance Tracking', () => {
     console.log('Transaction hash:', tx.txHash.toString());
     console.log('Transaction status:', tx.status);
 
-    // Check balance after note creation
-    const finalBalance = await gettingStartedContract.methods
-      .get_user_balance(deployer)
-      .simulate({ from: deployer });
+    // Get the transaction effect to access the note hashes
+    const node = createAztecNodeClient(NODE_URL);
+    const txEffect = await node.getTxEffect(tx.txHash);
 
-    expect(finalBalance).toBe(NOTE_VALUE);
-    console.log('Final balance:', finalBalance.toString());
+    expect(txEffect).toBeDefined();
+    if (!txEffect) {
+      throw new Error('Cannot find txEffect from tx hash');
+    }
+
+    // Compute the note hash using v3 formula:
+    // 1. commitment = poseidon2([owner, storage_slot, randomness], GENERATOR_INDEX__NOTE_HASH)
+    // 2. note_hash = poseidon2([commitment, value], GENERATOR_INDEX__NOTE_HASH)
+    const commitment = await poseidon2HashWithSeparator(
+      [deployer.toField(), STORAGE_SLOT, NOTE_RANDOMNESS],
+      GENERATOR_INDEX__NOTE_HASH
+    );
+
+    const noteHash = await poseidon2HashWithSeparator(
+      [commitment, new Fr(NOTE_VALUE)],
+      GENERATOR_INDEX__NOTE_HASH
+    );
+
+    console.log('Computed inner note hash:', noteHash.toString());
+
+    // Compute the unique note hash (which is what gets stored on-chain)
+    const INDEX_OF_NOTE_HASH_IN_TRANSACTION = 0;
+    const nonceGenerator = txEffect.data.nullifiers[0];
+    const noteHashNonce = await computeNoteHashNonce(nonceGenerator, INDEX_OF_NOTE_HASH_IN_TRANSACTION);
+    const siloedNoteHash = await siloNoteHash(gettingStartedContract.address, noteHash);
+    const computedUniqueNoteHash = await computeUniqueNoteHash(noteHashNonce, siloedNoteHash);
+
+    console.log('Siloed note hash:', siloedNoteHash.toString());
+    console.log('Computed unique note hash:', computedUniqueNoteHash.toString());
+    console.log('Actual on-chain note hash:', txEffect.data.noteHashes[0].toString());
+
+    // Verify the computed hash matches the on-chain hash
+    expect(computedUniqueNoteHash.toString()).toBe(txEffect.data.noteHashes[0].toString());
+    console.log('✅ Hash verification successful!');
   }, TEST_TIMEOUT);
 
-  test('should accumulate multiple notes', async () => {
-    const ADDITIONAL_VALUE = 50n;
+  test('should create note with different value and verify hash', async () => {
+    const NOTE_VALUE = 42n;
 
-    // Get current balance
-    const currentBalance = await gettingStartedContract.methods
-      .get_user_balance(deployer)
-      .simulate({ from: deployer });
-
-    // Create another note
-    await gettingStartedContract.methods
-      .create_note_for_user(ADDITIONAL_VALUE)
+    // Create note with different value
+    const tx = await gettingStartedContract.methods
+      .create_note_for_user(NOTE_VALUE)
       .send({ from: deployer })
       .wait();
 
-    // Check accumulated balance
-    const newBalance = await gettingStartedContract.methods
-      .get_user_balance(deployer)
-      .simulate({ from: deployer });
+    expect(tx.status).toBe('success');
 
-    expect(newBalance).toBe(currentBalance + ADDITIONAL_VALUE);
-    console.log('Accumulated balance:', newBalance.toString());
+    // Get the transaction effect
+    const node = createAztecNodeClient(NODE_URL);
+    const txEffect = await node.getTxEffect(tx.txHash);
+    expect(txEffect).toBeDefined();
+    if (!txEffect) {
+      throw new Error('Cannot find txEffect from tx hash');
+    }
+
+    // Compute the note hash
+    const commitment = await poseidon2HashWithSeparator(
+      [deployer.toField(), STORAGE_SLOT, NOTE_RANDOMNESS],
+      GENERATOR_INDEX__NOTE_HASH
+    );
+
+    const noteHash = await poseidon2HashWithSeparator(
+      [commitment, new Fr(NOTE_VALUE)],
+      GENERATOR_INDEX__NOTE_HASH
+    );
+
+    // Compute unique hash
+    const nonceGenerator = txEffect.data.nullifiers[0];
+    const noteHashNonce = await computeNoteHashNonce(nonceGenerator, 0);
+    const siloedNoteHash = await siloNoteHash(gettingStartedContract.address, noteHash);
+    const computedUniqueNoteHash = await computeUniqueNoteHash(noteHashNonce, siloedNoteHash);
+
+    // Verify
+    expect(computedUniqueNoteHash.toString()).toBe(txEffect.data.noteHashes[0].toString());
+    console.log('✅ Hash verification successful for value', NOTE_VALUE.toString());
   }, TEST_TIMEOUT);
 });
