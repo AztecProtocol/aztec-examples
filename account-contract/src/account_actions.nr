@@ -1,11 +1,11 @@
-use dep::aztec::context::PrivateContext;
+use aztec::context::PrivateContext;
 
-use dep::aztec::protocol_types::{
+use aztec::protocol_types::{
     constants::GENERATOR_INDEX__TX_NULLIFIER, hash::poseidon2_hash_with_separator, traits::Hash,
 };
 
-use dep::aztec::authwit::auth::{compute_authwit_message_hash, IS_VALID_SELECTOR};
-use dep::aztec::authwit::entrypoint::app::AppPayload;
+use aztec::authwit::auth::{compute_authwit_message_hash, IS_VALID_SELECTOR};
+use aztec::authwit::entrypoint::app::AppPayload;
 
 pub struct AccountActions<Context> {
     context: Context,

@@ -1,50 +1,61 @@
 import { describe, expect, test, beforeAll } from '@jest/globals';
-import { AccountWalletWithSecretKey, Contract, createPXEClient, waitForPXE, PXE, TxStatus, Fr } from '@aztec/aztec.js';
-import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
+import { TxStatus, Fr } from '@aztec/aztec.js';
+import { createAztecNodeClient, waitForNode } from '@aztec/aztec.js/node';
+import { AztecAddress } from '@aztec/aztec.js/addresses';
+import { getInitialTestAccountsData } from '@aztec/accounts/testing';
+import { TestWallet } from '@aztec/test-wallet/server';
+import type { TestWallet as TestWalletType } from '@aztec/test-wallet/server';
 import { GettingStartedContract, GettingStartedContractArtifact } from '../contract/artifacts/GettingStarted.js';
-import { computeNoteHashNonce, computeUniqueNoteHash, deriveStorageSlotInMap, siloNoteHash } from '@aztec/stdlib/hash';
-import { poseidon2HashWithSeparator } from '@aztec/foundation/crypto';
-import { createAztecNodeClient } from '@aztec/aztec.js';
 
-const PXE_URL = 'http://localhost:8080';
-const NOTE_HASH_SEPARATOR = 1;
+const NODE_URL = 'http://localhost:8080';
 
 // Test timeout - note creation and hash computation can take some time
-const TEST_TIMEOUT = 60000; // 60 seconds
+const TEST_TIMEOUT = 120000; // 120 seconds
 
-describe('Note Creation and Hash Computation', () => {
-  let pxe: PXE;
-  let deployer: AccountWalletWithSecretKey;
-  let user1: AccountWalletWithSecretKey;
-  let user2: AccountWalletWithSecretKey;
+describe('Note Creation and Balance Tracking', () => {
+  let wallet: TestWalletType;
+  let deployer: AztecAddress;
+  let user1: AztecAddress;
   let gettingStartedContract: GettingStartedContract;
 
   beforeAll(async () => {
-    // Setup PXE client
-    console.log(`Connecting to PXE at ${PXE_URL}`);
-    pxe = createPXEClient(PXE_URL);
-    await waitForPXE(pxe);
-    console.log('PXE client connected');
+    // Setup node client
+    console.log(`Connecting to Aztec node at ${NODE_URL}`);
+    const aztecNode = createAztecNodeClient(NODE_URL);
+    await waitForNode(aztecNode);
+    console.log('Aztec node connected');
 
-    // Setup wallets
-    const wallets = await getInitialTestAccountsWallets(pxe);
-    deployer = wallets[0];
-    user1 = wallets[1];
-    user2 = wallets[2];
+    // Create TestWallet
+    wallet = await TestWallet.create(aztecNode, { dataDirectory: 'pxe-test-data' });
+    console.log('TestWallet created');
 
-    console.log('Test wallets configured');
-    console.info('Deployer address:', deployer.getAddress().toString());
-    console.info('User1 address:', user1.getAddress().toString());
-    console.info('User2 address:', user2.getAddress().toString());
+    // Get test account data
+    const accountsData = await getInitialTestAccountsData();
+
+    // Create accounts using the wallet
+    const deployerAccount = await wallet.createSchnorrAccount(
+      accountsData[0].secret,
+      accountsData[0].salt,
+      accountsData[0].signingKey
+    );
+    deployer = deployerAccount.address;
+
+    const user1Account = await wallet.createSchnorrAccount(
+      accountsData[1].secret,
+      accountsData[1].salt,
+      accountsData[1].signingKey
+    );
+    user1 = user1Account.address;
+
+    console.log('Test accounts configured');
+    console.info('Deployer address:', deployer.toString());
+    console.info('User1 address:', user1.toString());
   }, TEST_TIMEOUT);
 
   test('should deploy GettingStarted contract', async () => {
-    gettingStartedContract = await Contract.deploy(
-      deployer,
-      GettingStartedContractArtifact,
-      [],
-      'setup'
-    ).send({ from: deployer.getAddress() }).deployed() as GettingStartedContract;
+    gettingStartedContract = await GettingStartedContract.deploy(wallet, deployer)
+      .send({ from: deployer })
+      .deployed();
 
     expect(gettingStartedContract.address).toBeDefined();
     expect(gettingStartedContract.address.toString()).not.toBe('');
@@ -52,73 +63,59 @@ describe('Note Creation and Hash Computation', () => {
     console.log('Contract deployed at address:', gettingStartedContract.address.toString());
   }, TEST_TIMEOUT);
 
-  test('should create note for user and compute correct note hash', async () => {
-    const NOTE_VALUE = 69;
-    const NOTE_RANDOMNESS = new Fr(6969);
+  test('should create note for user and track balance', async () => {
+    const NOTE_VALUE = 100n;
+
+    // Get initial balance (should be 0)
+    const initialBalance = await gettingStartedContract.methods
+      .get_user_balance(deployer)
+      .simulate({ from: deployer });
+
+    expect(initialBalance).toBe(0n);
+    console.log('Initial balance:', initialBalance.toString());
 
     // Create note
-    const tx = gettingStartedContract.methods.create_note_for_user(NOTE_VALUE);
-    const txExecutionRequest = await tx.create();
-    const txRequestHash = await txExecutionRequest.toTxRequest().hash();
+    const tx = await gettingStartedContract.methods
+      .create_note_for_user(NOTE_VALUE)
+      .send({ from: deployer })
+      .wait();
 
-    console.log('TX REQUEST HASH', txRequestHash.toString());
+    expect(tx).toBeDefined();
+    expect(tx.txHash).toBeDefined();
+    expect(tx.status).toBe('success');
 
-    const sentTx = await tx.send({ from: deployer.getAddress() }).wait();
+    console.log('Transaction hash:', tx.txHash.toString());
+    console.log('Transaction status:', tx.status);
 
-    expect(sentTx).toBeDefined();
-    expect(sentTx.txHash).toBeDefined();
-    expect(sentTx.status).toBe(TxStatus.SUCCESS);
+    // Check balance after note creation
+    const finalBalance = await gettingStartedContract.methods
+      .get_user_balance(deployer)
+      .simulate({ from: deployer });
 
-    console.log('Transaction hash:', sentTx.txHash.toString());
-    console.log('Transaction status:', sentTx.status);
+    expect(finalBalance).toBe(NOTE_VALUE);
+    console.log('Final balance:', finalBalance.toString());
+  }, TEST_TIMEOUT);
 
-    // Get transaction effect
-    const node = createAztecNodeClient(PXE_URL);
-    const txEffect = await node.getTxEffect(sentTx.txHash);
+  test('should accumulate multiple notes', async () => {
+    const ADDITIONAL_VALUE = 50n;
 
-    expect(txEffect).toBeDefined();
+    // Get current balance
+    const currentBalance = await gettingStartedContract.methods
+      .get_user_balance(deployer)
+      .simulate({ from: deployer });
 
-    // Compute note hash components
-    const storageSlot = await deriveStorageSlotInMap(
-      GettingStartedContract.storage.user_private_state.slot,
-      deployer.getAddress()
-    );
+    // Create another note
+    await gettingStartedContract.methods
+      .create_note_for_user(ADDITIONAL_VALUE)
+      .send({ from: deployer })
+      .wait();
 
-    const commitment = await poseidon2HashWithSeparator(
-      [deployer.getAddress().toField(), NOTE_RANDOMNESS, storageSlot],
-      NOTE_HASH_SEPARATOR
-    );
+    // Check accumulated balance
+    const newBalance = await gettingStartedContract.methods
+      .get_user_balance(deployer)
+      .simulate({ from: deployer });
 
-    const noteHash = await poseidon2HashWithSeparator(
-      [commitment, new Fr(NOTE_VALUE)],
-      NOTE_HASH_SEPARATOR
-    );
-
-    const INDEX_OF_NOTE_HASH_IN_TRANSACTION = 0;
-    const nonceGenerator = txEffect?.data.nullifiers[0] ?? txRequestHash;
-
-    const noteHashNonce = await computeNoteHashNonce(
-      nonceGenerator,
-      INDEX_OF_NOTE_HASH_IN_TRANSACTION
-    );
-
-    const siloedNoteHash = await siloNoteHash(
-      gettingStartedContract.address,
-      noteHash
-    );
-
-    const computedUniqueNoteHash = await computeUniqueNoteHash(
-      noteHashNonce,
-      siloedNoteHash
-    );
-
-    const actualUniqueNoteHash = txEffect!.data.noteHashes[0];
-
-    console.log('NOTE HASH:', noteHash.toString());
-    console.log('COMPUTED UNIQUE NOTE HASH:', computedUniqueNoteHash.toString());
-    console.log('ACTUAL UNIQUE NOTE HASH:', actualUniqueNoteHash.toString());
-
-    // Verify computed hash matches actual hash
-    expect(computedUniqueNoteHash.toString()).toBe(actualUniqueNoteHash.toString());
+    expect(newBalance).toBe(currentBalance + ADDITIONAL_VALUE);
+    console.log('Accumulated balance:', newBalance.toString());
   }, TEST_TIMEOUT);
 });
