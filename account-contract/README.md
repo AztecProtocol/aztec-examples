@@ -88,7 +88,7 @@ const entrypoint = new PasswordAccountEntrypoint(
 Compile the Noir contract:
 
 ```bash
-aztec-nargo compile
+aztec compile
 ```
 
 Install TypeScript dependencies:
@@ -170,18 +170,27 @@ When implementing custom account contracts in Aztec, be aware of these critical 
 - Failed fee payments will cause the entire transaction to fail
 - Consider how users will fund their account contracts with Fee Asset
 
+## Aztec Version Compatibility
+
+This example is compatible with **Aztec v3.0.0-devnet.20251212**.
+
+To set this version:
+
+```bash
+aztec-up 3.0.0-devnet.20251212
+```
+
 ## Dependencies
 
 ### Noir Dependencies
 
-- **aztec**: v3.0.0-devnet.4
-- **poseidon**: v0.1.1
+- **aztec**: v3.0.0-devnet.20251212
 
 ### TypeScript Dependencies
 
-- **@aztec/aztec.js**: 3.0.0-devnet.4
-- **@aztec/accounts**: 3.0.0-devnet.4
-- **@aztec/stdlib**: 3.0.0-devnet.4
+- **@aztec/aztec.js**: 3.0.0-devnet.20251212
+- **@aztec/accounts**: 3.0.0-devnet.20251212
+- **@aztec/stdlib**: 3.0.0-devnet.20251212
 - **@aztec/entrypoints**: Included in aztec.js
 
 ## Project Structure

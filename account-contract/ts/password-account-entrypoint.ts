@@ -1,17 +1,16 @@
-import { Fr } from '@aztec/foundation/fields';
-import { ContractArtifact, type FunctionAbi, FunctionSelector, encodeArguments, loadContractArtifact } from '@aztec/stdlib/abi';
-import type { AztecAddress } from '@aztec/stdlib/aztec-address';
+import { Fr } from '@aztec/aztec.js/fields';
+import type { AztecAddress } from '@aztec/aztec.js/addresses';
+import { type ContractArtifact, type FunctionAbi, FunctionSelector, encodeArguments, loadContractArtifact } from '@aztec/stdlib/abi';
 import type { GasSettings } from '@aztec/stdlib/gas';
-import { HashedValues, TxContext, TxExecutionRequest } from '@aztec/stdlib/tx';
-
-import { AuthWitnessProvider, ChainInfo, EntrypointInterface } from '@aztec/entrypoints/interfaces';
-import { ExecutionPayload } from '@aztec/entrypoints/payload';
-import { EncodedAppEntrypointCalls } from '@aztec/entrypoints/encoding';
-import { DefaultAccountEntrypointOptions } from '@aztec/entrypoints/account';
-import { AccountContract, AccountInterface } from '@aztec/aztec.js/account';
+import { HashedValues, TxContext, TxExecutionRequest, type ExecutionPayload } from '@aztec/stdlib/tx';
 import { CompleteAddress } from '@aztec/stdlib/contract';
 import { AuthWitness } from '@aztec/stdlib/auth-witness';
-import { NoirCompiledContract } from '@aztec/stdlib/noir';
+import type { NoirCompiledContract } from '@aztec/stdlib/noir';
+
+import type { AuthWitnessProvider, ChainInfo, EntrypointInterface } from '@aztec/entrypoints/interfaces';
+import { EncodedAppEntrypointCalls } from '@aztec/entrypoints/encoding';
+import type { DefaultAccountEntrypointOptions } from '@aztec/entrypoints/account';
+import type { AccountContract, AccountInterface } from '@aztec/aztec.js/account';
 
 import PasswordAccountContractJson from '../target/custom_account-PasswordAccount.json' with { type: 'json' };
 
@@ -81,6 +80,7 @@ export class PasswordAccountEntrypoint implements EntrypointInterface {
       functionType: 'private',
       isInternal: false,
       isStatic: false,
+      isOnlySelf: false,
       parameters: [{"name":"app_payload","type":{"kind":"struct","fields":[{"name":"function_calls","type":{"kind":"array","length":5,"type":{"kind":"struct","fields":[{"name":"args_hash","type":{"kind":"field"}},{"name":"function_selector","type":{"kind":"struct","fields":[{"name":"inner","type":{"kind":"integer","sign":"unsigned","width":32}}],"path":"aztec::protocol_types::abis::function_selector::FunctionSelector"}},{"name":"target_address","type":{"kind":"struct","fields":[{"name":"inner","type":{"kind":"field"}}],"path":"aztec::protocol_types::address::aztec_address::AztecAddress"}},{"name":"is_public","type":{"kind":"boolean"}},{"name":"hide_msg_sender","type":{"kind":"boolean"}},{"name":"is_static","type":{"kind":"boolean"}}],"path":"aztec::authwit::entrypoint::function_call::FunctionCall"}}},{"name":"tx_nonce","type":{"kind":"field"}}],"path":"aztec::authwit::entrypoint::app::AppPayload"},"visibility":"private"},{"name":"fee_payment_method","type":{"kind":"integer","sign":"unsigned","width":8},"visibility":"private"},{"name":"cancellable","type":{"kind":"boolean"},"visibility":"private"},{"name":"password","type":{"kind":"field"},"visibility":"private"}],
       returnTypes: [],
       errorTypes: {},

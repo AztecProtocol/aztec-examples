@@ -1,16 +1,14 @@
-// import { DeployAccountMethod, DeployAccountOptions } from '@aztec/aztec.js/wallet';
-import { AztecAddress } from '@aztec/stdlib/aztec-address';
+import { AztecAddress } from '@aztec/aztec.js/addresses';
+import { Fr } from '@aztec/aztec.js/fields';
 import { SponsoredFeePaymentMethod } from '@aztec/aztec.js/fee';
+import { Contract, DeployMethod, type DeployOptions } from '@aztec/aztec.js/contracts';
+import { createAztecNodeClient } from '@aztec/aztec.js/node';
+import { deriveKeys } from '@aztec/aztec.js/keys';
 import { getContractInstanceFromInstantiationParams } from '@aztec/stdlib/contract';
-import { CardGameContract } from '@aztec/noir-contracts.js/CardGame';
 import { SponsoredFPCContractArtifact } from '@aztec/noir-contracts.js/SponsoredFPC';
 import { SPONSORED_FPC_SALT } from '@aztec/constants';
-import { Fr } from '@aztec/foundation/fields';
 import { PasswordAccountContract } from './password-account-entrypoint';
-import { deriveKeys } from '@aztec/stdlib/keys';
-import { Contract, DeployMethod, DeployOptions } from '@aztec/aztec.js/contracts';
 import { TestWallet } from '@aztec/test-wallet/server';
-import { createAztecNodeClient } from '@aztec/aztec.js/node';
 
 async function getSponsoredPFCContract() {
   const instance = await getContractInstanceFromInstantiationParams(
@@ -66,7 +64,7 @@ const accountContractDeployMethod = new DeployMethod(
     publicKeys,
     wallet,
     artifact,
-    address => Contract.at(address, artifact, wallet),
+    (instance, wallet) => Contract.at(instance.address, artifact, wallet),
     constructorArgs,
     constructorName,
 )
@@ -78,8 +76,8 @@ console.log(stats);
 
 const deployedAccountContract = await accountContractDeployMethod.send(deployAccountOpts).wait();
 
-await wallet.createAccount({ secret: Fr.random(), contract: passwordAccountContract, salt: Fr.random() });
+console.log('PasswordAccount contract deployed at:', deployedAccountContract.contract.address);
 
-const cardGameContract = await CardGameContract.deploy(wallet).send({ from: deployedAccountContract.contract.address }).deployed();
-
-console.log(cardGameContract)
+// Create and register an account using the deployed contract
+const account = await wallet.createAccount({ secret: Fr.random(), contract: passwordAccountContract, salt: Fr.random() });
+console.log('Account registered at:', account.address.toString());
