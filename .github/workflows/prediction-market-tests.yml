@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - "prediction_market_contract/**"
+      - "prediction-market/**"
       - ".github/workflows/prediction-market-tests.yml"
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AZTEC_ENV: sandbox
-      AZTEC_VERSION: 3.0.0-devnet.4
+      AZTEC_VERSION: 3.0.0-devnet.20251212
 
     steps:
       - name: Checkout repository
@@ -70,23 +70,22 @@ jobs:
           done
 
       - name: Install project dependencies
-        working-directory: prediction_market_contract
+        working-directory: prediction-market
         run: bun install
 
       - name: Run Noir unit tests
-        working-directory: prediction_market_contract
+        working-directory: prediction-market
         run: aztec test
         timeout-minutes: 10
 
       - name: Compile contract and generate artifacts
-        working-directory: prediction_market_contract
+        working-directory: prediction-market
         run: |
-          aztec-nargo compile
-          aztec-postprocess-contract
+          aztec compile
           aztec codegen target -o artifacts
 
       - name: Run end-to-end tests
-        working-directory: prediction_market_contract
+        working-directory: prediction-market
         run: bun test
         timeout-minutes: 15
 
@@ -96,7 +95,7 @@ jobs:
         with:
           name: test-logs
           path: |
-            prediction_market_contract/tests/**/*.log
+            prediction-market/tests/**/*.log
           retention-days: 7
 
       - name: Cleanup
