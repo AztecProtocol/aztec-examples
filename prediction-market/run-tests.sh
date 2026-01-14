@@ -20,22 +20,18 @@ aztec test
 
 echo ""
 echo "3. Compiling contract..."
-aztec-nargo compile
+aztec compile
 
 echo ""
-echo "4. Post-processing contract..."
-aztec-postprocess-contract
-
-echo ""
-echo "5. Generating TypeScript bindings..."
+echo "4. Generating TypeScript bindings..."
 aztec codegen target -o artifacts
 
 echo ""
-echo "6. Installing dependencies..."
+echo "5. Installing dependencies..."
 bun install
 
 echo ""
-echo "7. Running end-to-end tests..."
+echo "6. Running end-to-end tests..."
 bun test
 
 echo ""
