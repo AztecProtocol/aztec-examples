@@ -6,10 +6,16 @@ use aztec::macros::aztec;
 /// Private Streaming Payments Contract
 ///
 /// Enables salary streaming, token vesting, and subscription payments where:
-/// - Amounts and schedules remain private
+/// - Token balances remain private (sender's source, recipient's destination)
+/// - Stream metadata is stored publicly for both parties to access
 /// - Tokens unlock linearly over time with optional cliff
 /// - Recipient can withdraw unlocked portion privately
 /// - Sender can cancel stream and reclaim unvested tokens
+///
+/// Privacy Model:
+/// - Stream existence, parameters, and parties are PUBLIC
+/// - Actual token balances remain PRIVATE
+/// - Withdrawal/cancellation timing is visible, but destination balances are private
 ///
 /// Token Flow:
 /// - create_stream: sender private balance -> contract public balance (escrow)
@@ -17,18 +23,15 @@ use aztec::macros::aztec;
 /// - cancel: contract public balance -> sender private balance (unvested portion)
 #[aztec]
 pub contract StreamingPayments {
-    use crate::stream_note::StreamNote;
+    use crate::lib::StreamData;
 
     use aztec::{
         macros::{functions::{external, initializer}, storage::storage},
-        messages::message_delivery::MessageDelivery,
         oracle::random::random,
         protocol_types::{
-            address::AztecAddress,
-            hash::poseidon2_hash_with_separator,
-            traits::ToField,
+            address::AztecAddress, hash::poseidon2_hash_with_separator, traits::ToField,
         },
-        state_vars::{Map, Owned, PrivateMutable, PublicImmutable},
+        state_vars::{Map, PublicImmutable, PublicMutable},
     };
 
     use dep::token::Token;
@@ -41,8 +44,9 @@ pub contract StreamingPayments {
         /// Token contract address for streaming payments
         token: PublicImmutable<AztecAddress, Context>,
 
-        /// Stream notes stored by stream_id, owned by recipient
-        streams: Map<Field, Owned<PrivateMutable<StreamNote, Context>, Context>, Context>,
+        /// Stream data stored publicly by stream_id
+        /// This allows both sender and recipient to access stream state
+        streams: Map<Field, PublicMutable<StreamData, Context>, Context>,
     }
 
     #[initializer]
@@ -112,8 +116,8 @@ pub contract StreamingPayments {
             STREAM_ID_SEPARATOR,
         );
 
-        // Create the stream note for the recipient
-        let stream_note = StreamNote::new(
+        // Enqueue public call to store stream data
+        self.enqueue(StreamingPayments::at(this_contract).store_stream_public(
             stream_id,
             sender,
             recipient,
@@ -121,15 +125,36 @@ pub contract StreamingPayments {
             start_time,
             end_time,
             cliff_time,
-        );
-
-        // Initialize the stream storage
-        // The stream is stored under recipient's ownership
-        self.storage.streams.at(stream_id).at(recipient).initialize(stream_note).deliver(
-            MessageDelivery.CONSTRAINED_ONCHAIN,
-        );
+        ));
 
         stream_id
+    }
+
+    /// Store stream data publicly (called from create_stream via enqueue)
+    /// Note: Only callable by this contract itself
+    #[external("public")]
+    fn store_stream_public(
+        stream_id: Field,
+        sender: AztecAddress,
+        recipient: AztecAddress,
+        total_amount: u128,
+        start_time: u64,
+        end_time: u64,
+        cliff_time: u64,
+    ) {
+        // Verify caller is this contract (internal call only)
+        assert(
+            self.context.msg_sender().unwrap() == self.context.this_address(),
+            "Only callable internally",
+        );
+
+        // Verify stream doesn't already exist (check sender is zero)
+        let existing = self.storage.streams.at(stream_id).read();
+        assert(existing.sender.is_zero(), "Stream already exists");
+
+        let stream_data =
+            StreamData::new(sender, recipient, total_amount, start_time, end_time, cliff_time);
+        self.storage.streams.at(stream_id).write(stream_data);
     }
 
     // =========================================================================
@@ -145,7 +170,7 @@ pub contract StreamingPayments {
     /// * `amount` - Amount to withdraw (must be <= unlocked - claimed)
     #[external("private")]
     fn withdraw(stream_id: Field, amount: u128) {
-        let recipient = self.context.msg_sender().unwrap();
+        let caller = self.context.msg_sender().unwrap();
         let this_contract = self.context.this_address();
 
         assert(amount > 0, "Amount must be positive");
@@ -154,34 +179,54 @@ pub contract StreamingPayments {
         let current_time =
             self.context.get_anchor_block_header().global_variables.timestamp as u64;
 
-        // Replace the stream note with updated claimed amount
-        self.storage.streams.at(stream_id).at(recipient).replace(|stream: StreamNote| {
-            // Verify the caller is the recipient (owner of the note)
-            assert(stream.get_owner() == recipient, "Not stream recipient");
-
-            // Check cliff has passed
-            assert(current_time >= stream.get_cliff_time(), "Cliff not reached");
-
-            // Calculate withdrawable amount
-            let withdrawable = stream.compute_withdrawable(current_time);
-            assert(amount <= withdrawable, "Exceeds withdrawable amount");
-
-            // Create updated note with new claimed amount
-            let new_claimed = stream.get_claimed_amount() + amount;
-            stream.with_claimed(new_claimed)
-        }).deliver(MessageDelivery.CONSTRAINED_ONCHAIN);
+        // Enqueue public call to validate and update stream state
+        self.enqueue(StreamingPayments::at(this_contract).process_withdrawal_public(
+            stream_id,
+            caller,
+            amount,
+            current_time,
+        ));
 
         // Transfer tokens from contract's public balance to recipient's private balance
-        // No authwit needed since contract is transferring from its own balance
         let token_address = self.storage.token.read();
         self.call(
-            Token::at(token_address).transfer_public_to_private(
-                this_contract,
-                recipient,
-                amount,
-                0,
-            ),
+            Token::at(token_address).transfer_public_to_private(this_contract, caller, amount, 0),
         );
+    }
+
+    /// Process withdrawal in public context (validates and updates state)
+    /// Note: Only callable by this contract itself
+    #[external("public")]
+    fn process_withdrawal_public(
+        stream_id: Field,
+        caller: AztecAddress,
+        amount: u128,
+        current_time: u64,
+    ) {
+        // Verify caller is this contract (internal call only)
+        assert(
+            self.context.msg_sender().unwrap() == self.context.this_address(),
+            "Only callable internally",
+        );
+
+        let mut stream = self.storage.streams.at(stream_id).read();
+
+        // Verify the original caller is the recipient
+        assert(stream.recipient == caller, "Not stream recipient");
+
+        // Check stream is not cancelled
+        assert(!stream.cancelled, "Stream is cancelled");
+
+        // Check cliff has passed
+        assert(current_time >= stream.cliff_time, "Cliff not reached");
+
+        // Calculate withdrawable amount
+        let withdrawable = stream.compute_withdrawable(current_time);
+        assert(amount <= withdrawable, "Exceeds withdrawable amount");
+
+        // Update claimed amount
+        stream.claimed_amount += amount;
+        self.storage.streams.at(stream_id).write(stream);
     }
 
     // =========================================================================
@@ -193,44 +238,27 @@ pub contract StreamingPayments {
     ///
     /// # Arguments
     /// * `stream_id` - ID of the stream to cancel
-    /// * `recipient` - Address of the stream recipient (needed to locate the note)
     /// * `unvested_amount` - The unvested amount to return to sender (caller must calculate)
     ///
     /// Note: The caller must provide the correct unvested_amount. This is validated against
-    /// the stream note data. This design avoids mutable captures in closures.
+    /// the stream data in the public function. Use get_unvested() to calculate this value.
     #[external("private")]
-    fn cancel_stream(stream_id: Field, recipient: AztecAddress, unvested_amount: u128) {
-        let sender = self.context.msg_sender().unwrap();
+    fn cancel_stream(stream_id: Field, unvested_amount: u128) {
+        let caller = self.context.msg_sender().unwrap();
         let this_contract = self.context.this_address();
 
         // Get current timestamp
         let current_time =
             self.context.get_anchor_block_header().global_variables.timestamp as u64;
 
-        // Replace the stream note - mark it as cancelled by setting end_time to current_time
-        // This effectively stops further vesting while preserving already vested amounts
-        self.storage.streams.at(stream_id).at(recipient).replace(|stream: StreamNote| {
-            // Verify caller is the sender (creator) of the stream
-            assert(stream.get_sender() == sender, "Not stream sender");
-
-            // Calculate amounts and validate the provided unvested_amount
-            let vested = stream.compute_unlocked(current_time);
-            let computed_unvested = stream.get_total_amount() - vested;
-            assert(unvested_amount == computed_unvested, "Invalid unvested amount");
-
-            // Create a "cancelled" stream note:
-            // - end_time = current_time (no more vesting)
-            // - total_amount = vested (only vested amount remains)
-            StreamNote::new(
-                stream.get_stream_id(),
-                stream.get_sender(),
-                stream.get_owner(), // recipient
-                vested, // new total is just the vested amount
-                stream.get_start_time(),
-                current_time, // end time is now
-                stream.get_cliff_time(),
-            ).with_claimed(stream.get_claimed_amount())
-        }).deliver(MessageDelivery.CONSTRAINED_ONCHAIN);
+        // Enqueue public call to validate and mark stream as cancelled
+        // The public function will verify the unvested_amount is correct
+        self.enqueue(StreamingPayments::at(this_contract).process_cancellation_public(
+            stream_id,
+            caller,
+            current_time,
+            unvested_amount,
+        ));
 
         // Transfer unvested tokens back to sender's private balance
         if unvested_amount > 0 {
@@ -238,12 +266,48 @@ pub contract StreamingPayments {
             self.call(
                 Token::at(token_address).transfer_public_to_private(
                     this_contract,
-                    sender,
+                    caller,
                     unvested_amount,
                     0,
                 ),
             );
         }
+    }
+
+    /// Process stream cancellation in public context (validates and updates state)
+    /// Note: Only callable by this contract itself
+    #[external("public")]
+    fn process_cancellation_public(
+        stream_id: Field,
+        caller: AztecAddress,
+        current_time: u64,
+        unvested_amount: u128,
+    ) {
+        // Verify caller is this contract (internal call only)
+        assert(
+            self.context.msg_sender().unwrap() == self.context.this_address(),
+            "Only callable internally",
+        );
+
+        let mut stream = self.storage.streams.at(stream_id).read();
+
+        // Verify the original caller is the sender
+        assert(stream.sender == caller, "Not stream sender");
+
+        // Verify not already cancelled
+        assert(!stream.cancelled, "Stream already cancelled");
+
+        // Calculate vested amount at cancellation time and validate unvested_amount
+        let vested = stream.compute_unlocked(current_time);
+        let computed_unvested = stream.total_amount - vested;
+        assert(unvested_amount == computed_unvested, "Invalid unvested amount");
+
+        // Update stream: mark cancelled and adjust total to vested amount only
+        stream.cancelled = true;
+        stream.total_amount = vested;
+        stream.end_time = current_time;
+
+        self.storage.streams.at(stream_id).write(stream);
     }
 
     // =========================================================================
@@ -256,44 +320,48 @@ pub contract StreamingPayments {
         self.storage.token.read()
     }
 
-    /// Get stream information (unconstrained view function)
+    /// Get stream information
     #[external("utility")]
     unconstrained fn get_stream_info(
         stream_id: Field,
-        recipient: AztecAddress,
-    ) -> pub (Field, AztecAddress, u128, u64, u64, u64, u128) {
-        let stream = self.storage.streams.at(stream_id).at(recipient).view_note();
+    ) -> pub (AztecAddress, AztecAddress, u128, u64, u64, u64, u128, bool) {
+        let stream = self.storage.streams.at(stream_id).read();
         (
-            stream.get_stream_id(),
-            stream.get_sender(),
-            stream.get_total_amount(),
-            stream.get_start_time(),
-            stream.get_end_time(),
-            stream.get_cliff_time(),
-            stream.get_claimed_amount(),
+            stream.sender,
+            stream.recipient,
+            stream.total_amount,
+            stream.start_time,
+            stream.end_time,
+            stream.cliff_time,
+            stream.claimed_amount,
+            stream.cancelled,
         )
     }
 
-    /// Calculate withdrawable amount for a stream at current time
+    /// Calculate withdrawable amount for a stream at given time
     #[external("utility")]
-    unconstrained fn get_withdrawable(
-        stream_id: Field,
-        recipient: AztecAddress,
-        current_time: u64,
-    ) -> pub u128 {
-        let stream = self.storage.streams.at(stream_id).at(recipient).view_note();
-        stream.compute_withdrawable(current_time)
+    unconstrained fn get_withdrawable(stream_id: Field, current_time: u64) -> pub u128 {
+        let stream = self.storage.streams.at(stream_id).read();
+        if stream.cancelled {
+            // For cancelled streams, withdrawable is based on vested amount at cancellation
+            // (total_amount was already adjusted to vested amount)
+            stream.compute_withdrawable(current_time)
+        } else {
+            stream.compute_withdrawable(current_time)
+        }
     }
 
     /// Calculate unvested amount for a stream (for cancel_stream)
     #[external("utility")]
-    unconstrained fn get_unvested(
-        stream_id: Field,
-        recipient: AztecAddress,
-        current_time: u64,
-    ) -> pub u128 {
-        let stream = self.storage.streams.at(stream_id).at(recipient).view_note();
-        let vested = stream.compute_unlocked(current_time);
-        stream.get_total_amount() - vested
+    unconstrained fn get_unvested(stream_id: Field, current_time: u64) -> pub u128 {
+        let stream = self.storage.streams.at(stream_id).read();
+        stream.compute_unvested(current_time)
+    }
+
+    /// Check if a stream exists
+    #[external("utility")]
+    unconstrained fn stream_exists(stream_id: Field) -> pub bool {
+        let stream = self.storage.streams.at(stream_id).read();
+        !stream.sender.is_zero()
     }
 }

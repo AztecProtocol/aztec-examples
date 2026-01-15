@@ -1,6 +1,75 @@
-/// Pure computation functions for streaming payments
+/// Pure computation functions and types for streaming payments
 ///
 /// These functions can be tested without the aztec context.
+
+use aztec::protocol_types::{address::AztecAddress, traits::{Deserialize, Packable, Serialize}};
+
+/// Public stream data stored in contract state
+/// Contains all stream parameters and current status
+#[derive(Eq, Serialize, Deserialize, Packable)]
+pub struct StreamData {
+    /// Address that created the stream (can cancel)
+    pub sender: AztecAddress,
+    /// Address that receives the streamed tokens
+    pub recipient: AztecAddress,
+    /// Total tokens to be streamed
+    pub total_amount: u128,
+    /// Unix timestamp when streaming starts
+    pub start_time: u64,
+    /// Unix timestamp when streaming ends (fully vested)
+    pub end_time: u64,
+    /// Unix timestamp before which no tokens can be withdrawn
+    pub cliff_time: u64,
+    /// Amount already claimed by recipient
+    pub claimed_amount: u128,
+    /// Whether the stream has been cancelled by sender
+    pub cancelled: bool,
+}
+
+impl StreamData {
+    pub fn new(
+        sender: AztecAddress,
+        recipient: AztecAddress,
+        total_amount: u128,
+        start_time: u64,
+        end_time: u64,
+        cliff_time: u64,
+    ) -> Self {
+        StreamData {
+            sender,
+            recipient,
+            total_amount,
+            start_time,
+            end_time,
+            cliff_time,
+            claimed_amount: 0,
+            cancelled: false,
+        }
+    }
+
+    /// Calculate how many tokens are unlocked at the given timestamp
+    pub fn compute_unlocked(self, current_time: u64) -> u128 {
+        compute_unlocked_amount(
+            self.total_amount,
+            self.start_time,
+            self.end_time,
+            self.cliff_time,
+            current_time,
+        )
+    }
+
+    /// Calculate how many tokens can be withdrawn (unlocked minus already claimed)
+    pub fn compute_withdrawable(self, current_time: u64) -> u128 {
+        let unlocked = self.compute_unlocked(current_time);
+        compute_withdrawable_amount(unlocked, self.claimed_amount)
+    }
+
+    /// Calculate unvested amount (for cancellation)
+    pub fn compute_unvested(self, current_time: u64) -> u128 {
+        let vested = self.compute_unlocked(current_time);
+        self.total_amount - vested
+    }
+}
 
 /// Calculate how many tokens are unlocked at a given timestamp
 ///
@@ -264,11 +333,7 @@ fn test_linear_vesting_precision() {
 use crate::StreamingPayments;
 use dep::aztec::{
     oracle::random::random,
-    protocol_types::address::AztecAddress,
-    test::helpers::{
-        authwit::add_private_authwit_from_call,
-        test_environment::TestEnvironment,
-    },
+    test::helpers::{authwit::add_private_authwit_from_call, test_environment::TestEnvironment},
 };
 use dep::token::Token;
 
@@ -439,11 +504,8 @@ unconstrained fn test_cancel_stream() {
     // Stream is already fully vested - cancel with unvested_amount = 0
     // This tests that cancellation works for a fully vested stream
     let unvested_amount: u128 = 0;
-    let cancel_call = StreamingPayments::at(streaming_address).cancel_stream(
-        stream_id,
-        recipient,
-        unvested_amount,
-    );
+    let cancel_call =
+        StreamingPayments::at(streaming_address).cancel_stream(stream_id, unvested_amount);
     env.call_private(sender, cancel_call);
 
     // Sender should receive nothing back (all vested)
