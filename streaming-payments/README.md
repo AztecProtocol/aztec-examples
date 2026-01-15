@@ -1,17 +1,18 @@
 # Streaming Payments Contract
 
-A private streaming payments contract for Aztec that enables:
+A streaming payments contract for Aztec that enables:
 - Salary streaming
 - Token vesting
 - Subscription payments
 
-All with full privacy - amounts, schedules, and participant identities remain hidden.
+Token balances remain private while stream metadata is stored publicly for both parties to access.
 
 ## Features
 
 - **Linear Vesting**: Tokens unlock linearly from start to end time
 - **Cliff Period**: Optional cliff before which no tokens can be withdrawn
-- **Private Streams**: Stream details stored in private notes
+- **Public Stream Registry**: Stream parameters stored publicly so both sender and recipient can interact
+- **Private Token Balances**: Actual token amounts remain in private balances
 - **Cancellation**: Sender can cancel and reclaim unvested tokens
 - **Partial Withdrawals**: Recipient can withdraw any unlocked amount
 - **Full Token Integration**: Uses the defi-wonderland/aztec-standards Token contract
@@ -22,24 +23,24 @@ All with full privacy - amounts, schedules, and participant identities remain hi
 
 ```
 Storage:
-├── token: PublicImmutable<AztecAddress>    # Token contract address
-└── streams: Map<Field, Map<AztecAddress, Owned<PrivateMutable<StreamNote>>>>
+├── token: PublicImmutable<AztecAddress>       # Token contract address
+└── streams: Map<Field, PublicMutable<StreamData>>  # Public stream registry
 ```
 
-### StreamNote
+### StreamData
 
-Each stream is represented as a private note containing:
+Each stream is stored publicly with the following fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| stream_id | Field | Unique identifier |
-| sender | AztecAddress | Stream creator |
+| sender | AztecAddress | Stream creator (can cancel) |
+| recipient | AztecAddress | Token recipient |
 | total_amount | u128 | Total tokens to stream |
 | start_time | u64 | When streaming begins |
 | end_time | u64 | When fully vested |
 | cliff_time | u64 | No withdrawals before this |
 | claimed_amount | u128 | Already withdrawn |
-| owner | AztecAddress | Recipient (note owner) |
+| cancelled | bool | Whether stream was cancelled |
 
 ### Key Functions
 
@@ -48,22 +49,30 @@ Each stream is represented as a private note containing:
 | `constructor(token)` | public | Initialize with token address |
 | `create_stream(...)` | private | Create a new stream (requires authwit) |
 | `withdraw(stream_id, amount)` | private | Withdraw unlocked tokens |
-| `cancel_stream(stream_id, recipient, unvested)` | private | Cancel and reclaim unvested |
+| `cancel_stream(stream_id, unvested_amount)` | private | Cancel and reclaim unvested |
 | `get_stream_info(...)` | utility | View stream details |
 | `get_withdrawable(...)` | utility | Calculate withdrawable amount |
 | `get_unvested(...)` | utility | Calculate unvested amount |
 
-## Privacy Properties
+## Privacy Model
 
 **Private** (hidden from observers):
-- Total stream amounts
-- Vesting schedules
-- Sender and recipient identities
-- Withdrawal amounts and timing
+- Token balances (sender's source, recipient's destination)
+- Individual withdrawal/cancellation amounts going to private balances
 
 **Public** (visible on-chain):
-- Stream existence (via nullifiers)
-- Token contract address
+- Stream existence and parameters
+- Sender and recipient addresses
+- Vesting schedule (start, end, cliff times)
+- Total stream amount
+- Claimed amount and cancellation status
+
+### Design Rationale
+
+The public stream registry approach was chosen because:
+1. **Both parties need access**: The sender needs to cancel, the recipient needs to withdraw
+2. **Note ownership limitation**: In Aztec, only the note owner can nullify their notes
+3. **Practical privacy**: For most use cases (payroll, vesting), stream existence isn't secret - what matters is keeping actual balances private
 
 ## Usage
 
@@ -148,7 +157,9 @@ npm test
 
 7. **Cancel** (optional): Sender cancels and reclaims unvested tokens
    ```
-   cancel_stream(stream_id, recipient, unvested_amount)
+   // First query unvested amount
+   let unvested = get_unvested(stream_id, current_time)
+   cancel_stream(stream_id, unvested)
    ```
 
 ## Linear Vesting Formula
@@ -200,8 +211,8 @@ streaming-payments/
 │       ├── Nargo.toml           # Contract dependencies
 │       └── src/
 │           ├── main.nr          # Main contract
-│           ├── stream_note.nr   # StreamNote type
-│           └── lib.nr           # Pure functions + tests
+│           ├── lib.nr           # StreamData type + pure functions + tests
+│           └── stream_note.nr   # Legacy StreamNote type (unused)
 ├── scripts/
 │   └── setup-token.sh           # Setup script
 ├── tests/
@@ -221,4 +232,4 @@ streaming-payments/
 
 - **Token Contract**: For actual token transfers
 - **Crowdfunding**: Similar time-based private payments
-- **Private Voting**: Uses similar note replacement patterns
+- **Private Voting**: Uses similar public/private hybrid patterns
