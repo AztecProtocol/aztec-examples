@@ -1,64 +1,79 @@
 # Off-Chain Account Ownership Proof
 
-This example demonstrates how to prove ownership of an Aztec account completely off-chain, without any on-chain transactions.
+This example demonstrates how to prove ownership of an Aztec account completely off-chain, without any on-chain transactions or node queries.
 
 ## Problem Statement
 
-You want to prove you control an Aztec account address with:
+You want to prove you control an Aztec account with:
 
-1. **No transactions** - verification uses only RPC calls to read state
-2. **Works for any account type** - demonstrated here with Schnorr accounts
-3. **Verifier can trust the proof** - the VK is committed to in the account's address derivation
+1. **No transactions** - purely cryptographic verification
+2. **No node queries** - fully offline verification using Merkle proofs
+3. **Works for any account type** - generic across Schnorr, Password, ECDSA accounts
+4. **Verifier can trust the proof** - VK membership is cryptographically verified
 
 ## How It Works
 
 ### The Key Insight
 
-Aztec account addresses are derived from the contract's `private_functions_root`, which includes a Merkle tree of function leaf preimages:
+Aztec contract classes commit to the verification key (VK) of each private function via a Merkle tree:
 
 ```
-ContractClassFunctionLeafPreimage {
-    selector: FunctionSelector,
-    vk_hash: Field,  // VK hash for this function's circuit
-}
+ContractClassId = hash(artifactHash, privateFunctionsRoot, publicBytecodeCommitment)
+
+privateFunctionsRoot = MerkleRoot of leaves where each leaf is:
+  hash(FunctionSelector, VK_Hash)
 ```
 
-This means the account address **cryptographically commits to the verification key** of each private function, including `verify_private_authwit`.
+This means we can prove a VK belongs to a contract class using a Merkle membership proof, without querying any node.
 
 ### Solution Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         PROVER                               │
-│  1. Has signing private key for account                      │
-│  2. Signs a random challenge                                 │
-│  3. Generates ZK proof of valid signature                    │
-│  4. Sends: proof, publicInputs (pubkey, challenge), VK       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                        VERIFIER                              │
-│  1. Verify the ZK proof                                      │
-│  2. (Optional) Query Aztec node for contract class           │
-│  3. Verify VK hash is in private_functions_root              │
-│  4. If VK matches → account ownership proven                 │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              PROVER                                      │
+│  1. Signs a challenge using their account's auth mechanism               │
+│  2. Generates ZK proof of valid signature                                │
+│  3. Generates VK membership proof from account contract artifact         │
+│  4. Sends: proof, VK, VK membership proof, contract class components     │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                             VERIFIER                                     │
+│  1. Compute privateFunctionsRoot from VK membership proof (Merkle)       │
+│  2. Recompute ContractClassId from components                            │
+│  3. Verify ContractClassId matches prover's claim                        │
+│  4. Verify the ZK proof                                                  │
+│  5. Result: Prover controls an account of this contract class            │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Trust Model
+
+The verifier proves: **"The prover controls an account of contract class X"**
+
+- The proof is fully self-contained and offline-verifiable
+- No Aztec node queries are required
+- The cryptographic binding ensures the prover cannot lie about the contract class
+- If address binding is needed, verifier can optionally query node to check deployment
 
 ## Project Structure
 
 ```
 offchain-account-ownership/
 ├── circuit/
-│   ├── Nargo.toml           # Noir project config
+│   ├── Nargo.toml              # Noir project config
 │   └── src/
-│       └── main.nr          # Schnorr signature verification circuit
+│       └── main.nr             # Schnorr signature verification circuit
 ├── scripts/
-│   ├── generate_proof.ts    # Generate ownership proof
-│   └── verify_proof.ts      # Verify ownership proof
+│   ├── generate_proof.ts       # Generate ownership proof with VK membership
+│   ├── verify_proof.ts         # Verify ownership proof offline
+│   └── utils/
+│       ├── types.ts            # Type definitions
+│       ├── contract_class.ts   # Contract class and Merkle utilities
+│       └── index.ts            # Utility exports
 ├── tests/
-│   └── ownership_proof.test.ts  # Integration tests
+│   └── ownership_proof.test.ts # Integration tests
 ├── package.json
 └── README.md
 ```
@@ -73,8 +88,8 @@ aztec-up 3.0.0-devnet.20251212
 # Install nargo for Noir compilation
 noirup -v 1.0.0-beta.15
 
-# Install Bun
-curl -fsSL https://bun.sh/install | bash
+# Install Node.js (v22+) and Yarn
+npm install -g yarn
 ```
 
 ## Usage
@@ -83,41 +98,123 @@ curl -fsSL https://bun.sh/install | bash
 
 ```bash
 cd offchain-account-ownership
-bun install
+yarn install
 ```
 
 ### 2. Compile the Circuit
 
 ```bash
-bun run compile
+yarn compile
 # or: cd circuit && nargo compile
 ```
 
 ### 3. Generate an Ownership Proof
 
 ```bash
-bun run data
+yarn data
+# or with account type:
+yarn data --account-type schnorr
 ```
 
 This will:
 - Generate a random signing key pair
-- Create a random challenge
-- Sign the challenge
+- Sign a random challenge
 - Generate a ZK proof proving the signature is valid
-- Output to `data.json`
+- Generate a VK membership proof from the Schnorr account contract
+- Output everything to `data.json`
 
-### 4. Verify the Proof
+### 4. Verify the Proof (Offline)
 
 ```bash
-bun run verify
+yarn verify
 # or with specific data file:
-bun run verify data.json
+yarn verify data.json
+# or with expected challenge (for replay protection):
+yarn verify data.json <expected-challenge>
 ```
+
+The verifier:
+1. Computes `privateFunctionsRoot` from the Merkle proof
+2. Recomputes `ContractClassId` from components
+3. Verifies the computed ID matches the claimed ID
+4. Verifies the ZK proof
+5. All done offline - no node queries!
 
 ### 5. Run Tests
 
 ```bash
-bun test
+yarn test
+```
+
+## Verification Output Example
+
+```
+============================================================
+VERIFICATION SUMMARY
+============================================================
+VK Membership:     ✓ PASSED
+Selector Check:    ✓ PASSED
+ZK Proof:          ✓ PASSED
+Account Type:      Unknown (not in registry)
+------------------------------------------------------------
+OVERALL:           ✓ VERIFIED
+
+============================================================
+✓ ACCOUNT OWNERSHIP VERIFIED
+============================================================
+
+The prover has demonstrated they control an account of:
+  Contract Class ID: 0x045ceef8cb0a93103c0e60b83b9fdfb01e869fc6425ed690c8b5679dc06403f1
+  Account Type: schnorr
+  VK Hash: 0x0dcf8a8fdb795328b3582cee28eea94f9ab561eb3d51de553ecbde537967e4f6
+
+This verification was performed completely offline.
+No Aztec node queries were required.
+```
+
+## Data Structure
+
+The proof data (`data.json`) contains:
+
+```typescript
+interface GenericOwnershipProof {
+  // Contract class identification
+  contractClass: {
+    id: string;                      // Contract class ID
+    artifactHash: string;            // Hash of contract artifact
+    publicBytecodeCommitment: string; // Commitment to public bytecode
+  };
+
+  // ZK Proof
+  proof: {
+    rawProof: number[];
+    publicInputs: string[];
+  };
+
+  // Verification Key
+  vk: {
+    asFields: string[];
+    hash: string;
+  };
+
+  // VK membership proof (Merkle proof)
+  vkMembershipProof: {
+    leafPreimage: {
+      selector: string;   // Function selector
+      vkHash: string;     // VK hash
+    };
+    siblingPath: string[];  // 7 elements for tree height 7
+    leafIndex: number;
+  };
+
+  // Challenge and metadata
+  challenge: string;
+  metadata: {
+    generatedAt: string;
+    accountType?: string;
+    functionName: string;
+  };
+}
 ```
 
 ## Circuit Details
@@ -140,41 +237,40 @@ fn main(
 }
 ```
 
-## Trust Model
-
-| Component | Trust Assumption |
-|-----------|------------------|
-| Proof | Zero-knowledge - verifier learns nothing except validity |
-| VK | Committed to in account address via contract class ID |
-| Challenge | Should be fresh/random to prevent replay attacks |
-| Public Key | Public input - verifier sees which account is being proven |
-
-## Full Verification (Production)
-
-In production, the verifier would:
-
-1. **Verify the ZK proof** - using the provided VK
-2. **Fetch contract instance** - `node_getContract(accountAddress)` via RPC
-3. **Get contract class** - `node_getContractClass(contractClassId)` via RPC
-4. **Verify VK inclusion** - check VK hash is in `private_functions_root` for `verify_private_authwit` selector
-
-This ensures the prover used the correct verification circuit that matches the account's actual authentication logic.
-
 ## Security Considerations
 
-- **Challenge freshness**: Always use a fresh random challenge provided by the verifier
-- **VK verification**: In production, verify the VK matches the account's contract class
-- **Replay protection**: The challenge binds the proof to a specific verification request
+| Aspect | Protection |
+|--------|------------|
+| **VK Binding** | VK membership proof cryptographically binds proof to contract class |
+| **Challenge Freshness** | Verifier should provide fresh challenge to prevent replay |
+| **Contract Class ID** | Verifier recomputes from components - prover cannot lie |
+| **Selector Verification** | Verified to be `verify_private_authwit` |
+| **No Address Binding** | Proves "account of class X", not "account at address Y" |
+
+### Address Binding (Optional)
+
+If you need to verify a specific address:
+1. Query node: `node_getContract(address).currentContractClassId`
+2. Compare with `proofData.contractClass.id`
+
+## Extending to Other Account Types
+
+The architecture supports any account type. To add support:
+
+1. Import the account contract artifact (e.g., `PasswordAccountContractArtifact`)
+2. Implement the corresponding proof generation (e.g., password verification)
+3. The VK membership proof generation is automatic
 
 ## Dependencies
 
 - `@aztec/bb.js` - Barretenberg proving backend
 - `@aztec/noir-noir_js` - Noir.js for circuit execution
-- `@aztec/foundation` - Schnorr signing utilities
-- `schnorr` (Noir) - Schnorr signature verification library
+- `@aztec/foundation` - Crypto utilities (Schnorr, poseidon2)
+- `@aztec/stdlib` - Contract class and Merkle utilities
+- `@aztec/accounts` - Account contract artifacts
 
 ## Related Resources
 
 - [Aztec Documentation](https://docs.aztec.network)
-- [Noir Schnorr Library](https://github.com/noir-lang/schnorr)
 - [Aztec Account Abstraction](https://docs.aztec.network/concepts/foundation/accounts)
+- [Contract Classes](https://docs.aztec.network/concepts/smart-contracts/classes)

@@ -37,6 +37,6 @@ fn main(
     assert(is_valid, "Invalid Schnorr signature");
 }
 
-// Tests are run via TypeScript using bun test
+// Tests are run via TypeScript using yarn test
 // The circuit is tested end-to-end with real Schnorr signatures generated
 // by the @aztec/foundation/crypto/schnorr library
