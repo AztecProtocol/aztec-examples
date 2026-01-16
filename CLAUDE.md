@@ -259,9 +259,9 @@ aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "vX.X.
 easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "vX.X.X", directory = "noir-projects/aztec-nr/easy-private-state" }
 ```
 
-**Version Compatibility**: Different examples may use different Aztec versions:
+**Version Compatibility**: All examples use the same Aztec version:
 
-- `recursive_verification`: v3.0.0-devnet.6-patch.1
+- All examples: v3.0.0-devnet.6-patch.1
 
 ### JavaScript/TypeScript Dependencies
 
