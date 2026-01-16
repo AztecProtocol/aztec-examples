@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeAll, afterAll } from "bun:test"
+import { describe, expect, test, beforeAll, afterAll } from "vitest"
 import type { FieldLike } from "@aztec/aztec.js/abi"
 import { TxStatus } from "@aztec/aztec.js/tx"
 import { AztecAddress } from "@aztec/aztec.js/addresses"

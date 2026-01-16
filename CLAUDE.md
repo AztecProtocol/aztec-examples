@@ -13,8 +13,7 @@ This is a collection of Aztec smart contract examples written in Noir, designed 
 - **nargo**: The Noir compiler for compiling vanilla Noir circuits (install via [noirup](https://github.com/noir-lang/noirup))
 - **aztec compile**: Aztec CLI command for compiling Aztec contracts (includes post-processing)
 - **aztec-wallet**: CLI tool for interacting with Aztec contracts
-- **Bun**: Fast JavaScript runtime (used in recursive_verification example)
-- **Node.js/npm**: JavaScript runtime (used in starter-token example)
+- **Node.js/npm/yarn**: JavaScript runtime and package managers (Node.js v22+ recommended)
 
 ## Project Structure
 
@@ -25,7 +24,7 @@ aztec-examples/
 │   ├── contract/          # Aztec contract that verifies Noir proofs
 │   ├── scripts/           # TypeScript utilities for proof generation and deployment
 │   ├── tests/             # Integration test suite
-│   ├── data.json         # Generated proof data (created by `bun data`)
+│   ├── data.json         # Generated proof data (created by `yarn data`)
 │   ├── README.md         # Comprehensive documentation
 │   ├── CLAUDE.md         # Project-specific AI guidance
 │   ├── EXPLAINER.md      # Technical deep-dive explanation
@@ -53,8 +52,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 3.0.0-devnet.20251212  # For recursive_verification
-aztec-up 2.0.2  # For starter-token
+aztec-up 3.0.0-devnet.6-patch.1  # For recursive_verification
 ```
 
 ### Building Contracts
@@ -65,8 +63,8 @@ From a contract directory containing `Nargo.toml`:
 # Compile an Aztec contract (includes post-processing)
 aztec compile
 
-# For recursive_verification example (using Bun)
-bun ccc  # Compiles contract and generates TypeScript bindings
+# For recursive_verification example (using yarn)
+yarn ccc  # Compiles contract and generates TypeScript bindings
 ```
 
 ### Building Vanilla Noir Circuits
@@ -110,7 +108,7 @@ nargo test --oracle-resolver http://127.0.0.1:8081 --show-output
 
 # Run integration tests (recursive_verification)
 cd recursive_verification
-bun test
+yarn test
 
 # Run full test suite with compilation
 ./run-tests.sh
@@ -149,9 +147,9 @@ aztec-wallet profile <function_name> --args <args...> --contract-address <alias>
 Complete workflow for the proof verification example:
 
 ```bash
-# 1. Install dependencies (requires Bun)
+# 1. Install dependencies (requires Node.js and yarn)
 cd recursive_verification
-bun install
+yarn install
 
 # 2. Install nargo for vanilla Noir circuit compilation
 noirup -v 1.0.0-beta.15
@@ -160,19 +158,19 @@ noirup -v 1.0.0-beta.15
 cd circuit && nargo compile && cd ..
 
 # 4. Compile the Aztec contract
-bun ccc  # Runs: aztec compile && aztec codegen
+yarn ccc  # Runs: aztec compile && aztec codegen
 
 # 5. Generate proof data (UltraHonk proof, verification key, public inputs)
-bun data  # Creates data.json with proof for x=1, y=2
+yarn data  # Creates data.json with proof for x=1, y=2
 
 # 6. Start Aztec local network (in separate terminal)
 aztec start --local-network
 
 # 7. Deploy contract and verify proof on-chain
-bun recursion  # Deploys ValueNotEqual contract and verifies proof
+yarn recursion  # Deploys ValueNotEqual contract and verifies proof
 
 # 8. Run tests
-bun test
+yarn test
 
 # Optional: Run circuit tests
 cd circuit && nargo test
@@ -263,7 +261,7 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 
 **Version Compatibility**: Different examples may use different Aztec versions:
 
-- `recursive_verification`: v3.0.0-devnet.20251212
+- `recursive_verification`: v3.0.0-devnet.6-patch.1
 
 ### JavaScript/TypeScript Dependencies
 
@@ -276,8 +274,9 @@ TypeScript projects use:
 
 ### Runtime Requirements
 
-- **Node.js/npm**: For starter-token TypeScript examples (v20+)
-- **Bun**: Required for recursive_verification example (faster alternative to Node.js)
+- **Node.js**: v22+ for all TypeScript examples
+- **yarn**: Package manager for recursive_verification example
+- **npm**: Package manager for starter-token example
 - **Docker**: Required for running Aztec local network
 - **Memory**: 8GB+ RAM recommended for proof generation
 
@@ -295,7 +294,7 @@ Runs on:
 
 Steps:
 
-1. Sets up Node.js (v22) and Bun
+1. Sets up Node.js (v22) and yarn
 2. Installs Aztec CLI
 3. Starts Aztec local network
 4. Compiles circuits and contracts
@@ -307,7 +306,7 @@ Steps:
 
 ### Issue: "Cannot find module './contract/artifacts/'"
 
-**Solution**: Run `bun ccc` or `aztec compile` to generate contract artifacts
+**Solution**: Run `yarn ccc` or `aztec compile` to generate contract artifacts
 
 ### Issue: "Failed to connect to PXE"
 
@@ -315,7 +314,7 @@ Steps:
 
 ### Issue: "Proof verification failed"
 
-**Solution**: Regenerate proof data after circuit changes with `bun data`
+**Solution**: Regenerate proof data after circuit changes with `yarn data`
 
 ### Issue: Memory issues during proof generation
 

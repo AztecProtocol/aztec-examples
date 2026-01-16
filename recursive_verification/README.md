@@ -11,12 +11,12 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `3.0.0-devnet.20251212`
+**Aztec Version**: `3.0.0-devnet.6-patch.1`
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) runtime (v1.0 or higher)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.20251212)
+- [Node.js](https://nodejs.org/) (v22 or higher) and [Yarn](https://yarnpkg.com/)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.6-patch.1)
 - [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.15) - for compiling vanilla Noir circuits
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
@@ -41,7 +41,7 @@ This project implements:
 ├── EXPLAINER.md        # Detailed technical explanation of the project
 ├── package.json        # Node.js package configuration
 ├── tsconfig.json       # TypeScript configuration
-├── data.json           # Generated proof data (created by `bun data`)
+├── data.json           # Generated proof data (created by `yarn data`)
 └── run-tests.sh        # Local test runner script
 ```
 
@@ -50,7 +50,7 @@ This project implements:
 ### Install dependencies:
 
 ```bash
-bun install
+yarn install
 ```
 
 ### Install Aztec CLI:
@@ -62,7 +62,7 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 3.0.0-devnet.20251212
+aztec-up 3.0.0-devnet.6-patch.1
 ```
 
 This ensures compatibility with the contract dependencies.
@@ -95,7 +95,7 @@ Generates a witness for testing the circuit with default inputs (defined in `cir
 ### 3. Compile the Aztec Contract
 
 ```bash
-bun ccc
+yarn ccc
 ```
 
 This command:
@@ -109,7 +109,7 @@ This command:
 Generate the verification key, proof, and public inputs:
 
 ```bash
-bun data
+yarn data
 ```
 
 This runs `scripts/generate_data.ts` which:
@@ -133,7 +133,7 @@ Keep this running in a separate terminal. The local network runs at `http://loca
 ### 2. Deploy Contract and Verify Proof
 
 ```bash
-bun recursion
+yarn recursion
 ```
 
 This runs `scripts/run_recursion.ts` which:
@@ -158,10 +158,10 @@ For a fresh setup, run these commands in order:
 
 ```bash
 # 1. Install dependencies
-bun install
+yarn install
 
 # 2. Setup Aztec
-aztec-up 3.0.0-devnet.20251212
+aztec-up 3.0.0-devnet.6-patch.1
 
 # 3. Install nargo for vanilla Noir circuit compilation
 noirup -v 1.0.0-beta.15
@@ -170,16 +170,16 @@ noirup -v 1.0.0-beta.15
 cd circuit && nargo compile && cd ..
 
 # 5. Compile contract
-bun ccc
+yarn ccc
 
 # 6. Generate proof data
-bun data
+yarn data
 
 # 7. Start local network (in a new terminal)
 aztec start --local-network
 
 # 8. Deploy and verify (in original terminal)
-bun recursion
+yarn recursion
 ```
 
 ## Testing
@@ -190,10 +190,10 @@ The project includes a comprehensive test suite for contract deployment and proo
 
 ```bash
 # Run all tests
-bun test
+yarn test
 
 # Run tests in watch mode for development
-bun test:watch
+yarn test:watch
 
 # Run full test suite locally (includes compilation)
 ./run-tests.sh
@@ -222,11 +222,11 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
 
 1. **"Cannot find module './contract/artifacts/ValueNotEqual'"**
 
-   - Run `bun ccc` to generate the contract artifacts
+   - Run `yarn ccc` to generate the contract artifacts
 
 2. **"Cannot find module './data.json'"**
 
-   - Run `bun data` to generate the proof data
+   - Run `yarn data` to generate the proof data
 
 3. **"Failed to connect to PXE"**
 
@@ -235,7 +235,7 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
 
 4. **"Proof verification failed"**
 
-   - Ensure you've run `bun data` after any circuit changes
+   - Ensure you've run `yarn data` after any circuit changes
    - Verify the circuit was compiled with `cd circuit && nargo compile`
 
 5. **Memory issues during proof generation**
@@ -257,8 +257,8 @@ rm -rf circuit/target contract/target contract/artifacts data.json
 
 # Rebuild everything
 cd circuit && nargo compile && cd ..
-bun ccc
-bun data
+yarn ccc
+yarn data
 ```
 
 ## How It Works
@@ -271,11 +271,11 @@ bun data
 
 ## Additional Scripts
 
-- `bun ccc`: Compile contract and generate TypeScript artifacts
-- `bun data`: Generate proof data (verification key, proof, public inputs)
-- `bun recursion`: Deploy contract and verify proof on-chain
-- `bun test`: Run integration test suite
-- `bun test:watch`: Run tests in watch mode for development
+- `yarn ccc`: Compile contract and generate TypeScript artifacts
+- `yarn data`: Generate proof data (verification key, proof, public inputs)
+- `yarn recursion`: Deploy contract and verify proof on-chain
+- `yarn test`: Run integration test suite
+- `yarn test:watch`: Run tests in watch mode for development
 - `./run-tests.sh`: Run full test suite locally (includes compilation)
 
 ## Resources

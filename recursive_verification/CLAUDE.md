@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 3.0.0-devnet.20251212 to verify Noir proofs within smart contracts on the Aztec network.
+This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 3.0.0-devnet.6-patch.1 to verify Noir proofs within smart contracts on the Aztec network.
 
 The project consists of:
 
@@ -18,7 +18,7 @@ The project consists of:
 
 ```bash
 # Install dependencies
-bun install
+yarn install
 
 # Install/update Aztec tools
 aztec-up
@@ -49,16 +49,16 @@ cd circuit && nargo test
 
 ```bash
 # Compile contract, postprocess, and generate TypeScript bindings
-bun ccc
+yarn ccc
 # This runs: cd contract && aztec compile && aztec codegen target -o artifacts
 
 # Generate proof data (vk, proof, public inputs) for contract verification
-bun data
-# This runs: bun run scripts/generate_data.ts
+yarn data
+# This runs: tsx scripts/generate_data.ts
 
 # Deploy contract and run proof verification
-bun recursion
-# This runs: bun run scripts/run_recursion.ts
+yarn recursion
+# This runs: tsx scripts/run_recursion.ts
 ```
 
 ## Architecture
@@ -105,9 +105,10 @@ bun recursion
 - `@aztec/aztec.js`: Aztec SDK for contract deployment and interaction
 - `@aztec/bb.js`: Barretenberg backend for proof generation
 - `@aztec/noir-noir_js`: Noir.js for circuit execution
-- `bun`: JavaScript runtime and package manager
+- `yarn`: Package manager
+- `tsx`: TypeScript execution for Node.js
 
 ## Testing
 
 - Circuit tests: Use `nargo test` in the circuit directory
-- Contract verification: Run the full flow with `bun recursion` after starting the local network
+- Contract verification: Run the full flow with `yarn recursion` after starting the local network

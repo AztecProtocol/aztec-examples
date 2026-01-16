@@ -27,13 +27,13 @@ echo "✅ Circuit compiled"
 # Compile the Aztec contract
 echo ""
 echo "Compiling Aztec contract and generating TypeScript bindings..."
-bun ccc
+yarn ccc
 echo "✅ Contract compiled and bindings generated"
 
 # Generate proof data
 echo ""
 echo "Generating proof data..."
-bun data
+yarn data
 echo "✅ Proof data generated (data.json)"
 
 # Run the tests
@@ -42,7 +42,7 @@ echo "========================================="
 echo "Running test suite..."
 echo "========================================="
 echo ""
-bun test
+yarn test
 
 echo ""
 echo "========================================="
