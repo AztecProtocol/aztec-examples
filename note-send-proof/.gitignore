@@ -3,3 +3,5 @@ target
 codegenCache.json
 artifacts
 dist
+pxe-test-data/
+pxe-data-gen/

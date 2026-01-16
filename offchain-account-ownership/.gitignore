@@ -1,9 +1,12 @@
+node_modules/
 target/
 artifacts/
-node_modules/
 dist/
-*.log
-.DS_Store
 codegenCache.json
 pxe-test-data/
+pxe-data-gen/
+*.log
+.DS_Store
 bun.lockb
+yarn.lock
+data.json
