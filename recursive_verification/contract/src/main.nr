@@ -12,7 +12,7 @@ pub contract ValueNotEqual {
         protocol_types::{address::AztecAddress, traits::ToField},
         state_vars::{Map, PublicImmutable, PublicMutable},
     };
-    use bb_proof_verification::verify_honk_proof;
+    use bb_proof_verification::{UltraHonkVerificationKey, UltraHonkZKProof, verify_honk_proof};
 
     #[storage]
     struct Storage<Context> {
@@ -30,8 +30,8 @@ pub contract ValueNotEqual {
     #[external("private")]
     fn increment(
         owner: AztecAddress,
-        verification_key: [Field; HONK_VK_SIZE],
-        proof: [Field; HONK_PROOF_SIZE],
+        verification_key: UltraHonkVerificationKey,
+        proof: UltraHonkZKProof,
         public_inputs: [Field; 1],
     ) {
         debug_log_format("Incrementing counter for owner {0}", [owner.to_field()]);
