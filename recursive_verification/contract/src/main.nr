@@ -2,10 +2,6 @@ use aztec::macros::aztec;
 
 #[aztec]
 pub contract ValueNotEqual {
-    // Sizes for bb_proof_verification
-    global HONK_VK_SIZE: u32 = 115;
-    global HONK_PROOF_SIZE: u32 = 508;
-
     use aztec::{
         macros::{functions::{external, initializer, internal, only_self, view}, storage::storage},
         oracle::debug_log::debug_log_format,
