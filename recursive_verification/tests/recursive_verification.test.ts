@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeAll, afterAll } from "bun:test"
+import { describe, expect, test, beforeAll, afterAll } from "vitest"
 import type { FieldLike } from "@aztec/aztec.js/abi"
 import { TxStatus } from "@aztec/aztec.js/tx"
 import { AztecAddress } from "@aztec/aztec.js/addresses"
@@ -34,8 +34,7 @@ describe("Recursive Verification", () => {
 
     // Create PXE config and TestWallet
     const config = getPXEConfig()
-    // TODO: this hangs when set to true, need to debug 
-    config.proverEnabled = false
+    config.proverEnabled = true
 
     testWallet = await TestWallet.create(aztecNode, config)
 

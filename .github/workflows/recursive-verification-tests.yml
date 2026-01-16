@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AZTEC_ENV: local-network
-      AZTEC_VERSION: 3.0.0-devnet.20251212
+      AZTEC_VERSION: 3.0.0-devnet.6-patch.1
 
     steps:
       - name: Checkout repository
@@ -28,11 +28,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.1.36
+          cache: "yarn"
+          cache-dependency-path: recursive_verification/yarn.lock
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
@@ -71,7 +68,7 @@ jobs:
 
       - name: Install project dependencies
         working-directory: recursive_verification
-        run: bun install --frozen-lockfile
+        run: yarn install --frozen-lockfile
 
       - name: Install Nargo
         uses: noir-lang/noirup@v0.1.4
@@ -84,7 +81,7 @@ jobs:
 
       - name: Compile contract and generate artifacts
         working-directory: recursive_verification
-        run: bun ccc
+        run: yarn ccc
 
       - name: Generate proof data
         working-directory: recursive_verification
@@ -94,12 +91,12 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=6144"
         run: |
           echo "Generating proof data with memory optimizations..."
-          bun data
+          yarn data
         timeout-minutes: 30
 
-      - name: Run recursive verification script
+      - name: Run tests
         working-directory: recursive_verification
-        run: bun recursion
+        run: yarn test
         timeout-minutes: 15
 
       - name: Upload test results if failed
