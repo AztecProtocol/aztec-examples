@@ -1,0 +1,26 @@
+[package]
+name = "dao_voting"
+type = "contract"
+authors = [""]
+compiler_version = ">=1.0.0"
+
+[dependencies]
+aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "v3.0.0-devnet.20251212", directory = "noir-projects/aztec-nr/aztec" }
+
+# eth-proofs dependencies for Ethereum storage proof verification
+# These enable L1 balance verification but require version compatibility work
+#
+# Correct import paths (verified from https://github.com/noir-lang/eth-proofs):
+# ethereum = { git = "https://github.com/noir-lang/eth-proofs", tag = "main", directory = "ethereum/circuits/lib" }
+# token = { git = "https://github.com/noir-lang/eth-proofs", tag = "main", directory = "vlayer/ethereum/circuits/lib" }
+#
+# Usage in Noir:
+#   use dep::ethereum::misc::types::Address;
+#   use dep::token::token::ERC20;
+#   use dep::token::token_list::mainnet::USDC;
+#
+# Example from is_dao_worthy:
+#   let balance: u128 = USDC.get_balance(wallet, block_no, false);
+#
+# NOTE: Currently incompatible with Aztec v3 due to Serde trait issues.
+# Track progress at: https://github.com/noir-lang/eth-proofs

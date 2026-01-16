@@ -1,0 +1,22 @@
+{
+  "name": "dao-voting",
+  "version": "1.0.0",
+  "description": "Private DAO voting with tiered voting power based on Ethereum token balances",
+  "type": "module",
+  "scripts": {
+    "compile": "aztec compile && aztec codegen target -o artifacts",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.integration.config.json",
+    "test:noir": "aztec test"
+  },
+  "dependencies": {
+    "@aztec/accounts": "3.0.0-devnet.20251212",
+    "@aztec/aztec.js": "3.0.0-devnet.20251212"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.0"
+  }
+}
