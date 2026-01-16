@@ -92,7 +92,7 @@ const balance = await market.methods.get_collateral_balance(myAddress).simulate(
 ```bash
 # Install Aztec tools
 bash -i <(curl -s https://install.aztec.network)
-aztec-up 3.0.0-devnet.20251212
+aztec-up 3.0.0-devnet.6-patch.1
 
 # Install dependencies
 yarn install
