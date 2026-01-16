@@ -34,8 +34,7 @@ describe("Recursive Verification", () => {
 
     // Create PXE config and TestWallet
     const config = getPXEConfig()
-    // TODO: this hangs when set to true, need to debug 
-    config.proverEnabled = false
+    config.proverEnabled = true
 
     testWallet = await TestWallet.create(aztecNode, config)
 
