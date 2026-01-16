@@ -94,9 +94,9 @@ jobs:
           yarn data
         timeout-minutes: 30
 
-      - name: Run recursive verification script
+      - name: Run tests
         working-directory: recursive_verification
-        run: yarn recursion
+        run: yarn test
         timeout-minutes: 15
 
       - name: Upload test results if failed
