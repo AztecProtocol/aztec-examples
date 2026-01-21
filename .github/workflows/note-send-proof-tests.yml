@@ -3,10 +3,10 @@ name: Note Send Proof Tests
 on:
   push:
     branches:
-      - main
+      - next
   pull_request:
     branches:
-      - main
+      - next
     paths:
       - "note-send-proof/**"
       - ".github/workflows/note-send-proof-tests.yml"

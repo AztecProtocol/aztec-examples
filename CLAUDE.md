@@ -289,7 +289,7 @@ The repository includes GitHub Actions workflows for automated testing:
 
 Runs on:
 
-- Push to main branch
+- Push to next branch
 - Pull requests modifying `recursive_verification/**`
 - Manual workflow dispatch
 

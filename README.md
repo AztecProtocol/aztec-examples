@@ -74,7 +74,7 @@ aztec-wallet profile <function> --args <args> --contract-address <alias> -f test
 
 ### Continuous Integration
 
-The repository includes GitHub Actions workflows that automatically test examples on pull requests and pushes to the main branch.
+The repository includes GitHub Actions workflows that automatically test examples on pull requests and pushes to the next branch.
 
 ### Local Testing
 

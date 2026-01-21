@@ -3,10 +3,10 @@ name: Prediction Market Tests
 on:
   push:
     branches:
-      - main
+      - next
   pull_request:
     branches:
-      - main
+      - next
     paths:
       - "prediction-market/**"
       - ".github/workflows/prediction-market-tests.yml"
