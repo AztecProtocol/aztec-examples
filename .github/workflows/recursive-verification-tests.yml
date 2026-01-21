@@ -3,10 +3,10 @@ name: Recursive Verification Tests
 on:
   push:
     branches:
-      - main
+      - next
   pull_request:
     branches:
-      - main
+      - next
     paths:
       - "recursive_verification/**"
       - ".github/workflows/recursive-verification-tests.yml"
@@ -37,7 +37,7 @@ jobs:
       - name: Install Aztec CLI
         run: |
           curl -s https://install.aztec.network > tmp.sh
-          NON_INTERACTIVE=1 bash tmp.sh
+          VERSION=${{ env.AZTEC_VERSION }} NON_INTERACTIVE=1 bash tmp.sh
           rm tmp.sh
 
       - name: Update path
