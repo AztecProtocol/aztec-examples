@@ -75,7 +75,7 @@ jobs:
         run: nargo compile
 
       - name: Change ownership for nargo files
-        run: sudo chown -R $(whoami) ~/nargo && sudo chown -R $(whoami) ~/nargo/github.com
+        run: sudo chown -R $(whoami) ~/nargo || true
 
       - name: Compile contract and generate artifacts
         working-directory: recursive_verification
