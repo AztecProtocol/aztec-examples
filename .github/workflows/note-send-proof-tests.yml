@@ -68,9 +68,9 @@ jobs:
 
       - name: Compile contract and generate artifacts
         working-directory: note-send-proof
-        env:
-          RUST_MIN_STACK: "8388608"
-        run: script -e -c "yarn ccc"
+        run: |
+          ulimit -s unlimited
+          script -e -c "yarn ccc"
 
       - name: Generate note hash data
         working-directory: note-send-proof

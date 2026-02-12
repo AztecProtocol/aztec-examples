@@ -70,16 +70,15 @@ jobs:
 
       - name: Run Noir unit tests
         working-directory: prediction-market
-        env:
-          RUST_MIN_STACK: "8388608"
-        run: script -e -c "aztec test"
+        run: |
+          ulimit -s unlimited
+          script -e -c "aztec test"
         timeout-minutes: 10
 
       - name: Compile contract and generate artifacts
         working-directory: prediction-market
-        env:
-          RUST_MIN_STACK: "8388608"
         run: |
+          ulimit -s unlimited
           script -e -c "aztec compile"
           script -e -c "aztec codegen target -o artifacts"
 
