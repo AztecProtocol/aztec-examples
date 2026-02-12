@@ -79,6 +79,8 @@ jobs:
 
       - name: Compile contract and generate artifacts
         working-directory: recursive_verification
+        env:
+          RUST_MIN_STACK: "8388608"
         run: script -e -c "yarn ccc"
 
       - name: Generate proof data
