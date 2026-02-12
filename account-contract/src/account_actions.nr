@@ -32,8 +32,33 @@ pub global AccountFeePaymentMethodOptions: AccountFeePaymentMethodOptionsEnum = 
     FEE_JUICE_WITH_CLAIM: 2,
 };
 
+/**
+ * An implementation of the Account Action struct for the private context.
+ *
+ * Implements logic to verify authorization and execute payloads.
+ */
 impl AccountActions<&mut PrivateContext> {
 
+    /// Verifies that the `app_hash` is authorized and executes the `app_payload`.
+    ///
+    /// @param app_payload The payload that contains the calls to be executed in the app phase.
+    ///
+    /// @param fee_payment_method The mechanism via which the account contract will pay for the transaction:
+    ///   - EXTERNAL (0): Signals that some other contract is in charge of paying the fee, nothing needs to be done.
+    ///   - PREEXISTING_FEE_JUICE (1): Makes the account contract publicly pay for the transaction with its own FeeJuice
+    ///                                 balance, which it must already have prior to this transaction. The contract will
+    ///                                 set itself as the fee payer and end the setup phase.
+    ///   - FEE_JUICE_WITH_CLAIM (2): Makes the account contract publicly pay for the transaction with its own FeeJuice
+    ///                                balance which is being claimed in the same transaction. The contract will set
+    ///                                itself as the fee payer but not end setup phase - this is done by the FeeJuice
+    ///                                contract after enqueuing a public call, which unlike most public calls is
+    ///                                whitelisted to be executable during setup.
+    ///
+    /// @param cancellable Controls whether to emit app_payload.tx_nonce as a nullifier, allowing a subsequent
+    /// transaction to be sent with a higher priority fee. This can be used to cancel the first transaction sent,
+    /// assuming it hasn't been mined yet.
+    ///
+    // docs:start:entrypoint
     pub fn entrypoint(self, app_payload: AppPayload, fee_payment_method: u8, cancellable: bool, password: Field) {
         let valid_fn = self.is_valid_impl;
 
@@ -57,7 +82,18 @@ impl AccountActions<&mut PrivateContext> {
         }
     }
 
+    /// Verifies that the `msg_sender` is authorized to consume `inner_hash` by the account.
+    ///
+    /// Computes the `message_hash` using the `msg_sender`, `chain_id`, `version` and `inner_hash`.
+    /// Then executes the `is_valid_impl` function to verify that the message is authorized.
+    ///
+    /// Will revert if the message is not authorized.
+    ///
+    /// @param inner_hash The hash of the message that the `msg_sender` is trying to consume.
     pub fn verify_private_authwit(self, inner_hash: Field, password: Field) -> Field {
+        // The `inner_hash` is "siloed" with the `msg_sender` to ensure that only it can
+        // consume the message.
+        // This ensures that contracts cannot consume messages that are not intended for them.
         let message_hash = compute_authwit_message_hash(
             self.context.maybe_msg_sender().unwrap(),
             self.context.chain_id(),
