@@ -46,21 +46,6 @@ jobs:
           echo "$HOME/.aztec/current/node_modules/.bin" >> $GITHUB_PATH
           echo "$HOME/.aztec/bin" >> $GITHUB_PATH
 
-      - name: Start local Aztec network
-        run: aztec start --local-network &
-
-      - name: Wait for local network to be ready
-        run: |
-          echo "Waiting for local network to start..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8080/status >/dev/null 2>&1; then
-              echo "Local network is ready!"
-              break
-            fi
-            echo "Waiting... ($i/30)"
-            sleep 5
-          done
-
       - name: Install project dependencies
         working-directory: recursive_verification
         run: yarn install --frozen-lockfile
@@ -82,6 +67,7 @@ jobs:
         run: |
           ulimit -s unlimited
           script -e -c "yarn ccc"
+        timeout-minutes: 15
 
       - name: Generate proof data
         working-directory: recursive_verification
@@ -93,6 +79,21 @@ jobs:
           echo "Generating proof data with memory optimizations..."
           yarn data
         timeout-minutes: 30
+
+      - name: Start local Aztec network
+        run: aztec start --local-network &
+
+      - name: Wait for local network to be ready
+        run: |
+          echo "Waiting for local network to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/status >/dev/null 2>&1; then
+              echo "Local network is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 5
+          done
 
       - name: Run tests
         working-directory: recursive_verification
