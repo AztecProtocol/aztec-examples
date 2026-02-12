@@ -11,8 +11,8 @@ import { GettingStartedContract } from '../contract/artifacts/GettingStarted.js'
 
 const NODE_URL = 'http://localhost:8080';
 
-// GENERATOR_INDEX__NOTE_HASH from Aztec protocol types
-const GENERATOR_INDEX__NOTE_HASH = 1;
+// DOM_SEP__NOTE_HASH from Aztec protocol types (v4 value)
+const DOM_SEP__NOTE_HASH = 116501019;
 
 // Must match NOTE_RANDOMNESS in the contract
 const NOTE_RANDOMNESS = new Fr(6969);
@@ -55,8 +55,7 @@ describe('Note Hash Computation Verification', () => {
 
   test('should deploy GettingStarted contract', async () => {
     gettingStartedContract = await GettingStartedContract.deploy(wallet, deployer)
-      .send({ from: deployer })
-      .deployed();
+      .send({ from: deployer });
 
     expect(gettingStartedContract.address).toBeDefined();
     expect(gettingStartedContract.address.toString()).not.toBe('');
@@ -68,38 +67,37 @@ describe('Note Hash Computation Verification', () => {
     const NOTE_VALUE = 69n;
 
     // Create note
-    const tx = await gettingStartedContract.methods
+    const receipt = await gettingStartedContract.methods
       .create_note_for_user(NOTE_VALUE)
-      .send({ from: deployer })
-      .wait();
+      .send({ from: deployer });
 
-    expect(tx).toBeDefined();
-    expect(tx.txHash).toBeDefined();
-    expect(tx.status).toBe('success');
+    expect(receipt).toBeDefined();
+    expect(receipt.txHash).toBeDefined();
+    expect(receipt.executionResult).toBe('success');
 
-    console.log('Transaction hash:', tx.txHash.toString());
-    console.log('Transaction status:', tx.status);
+    console.log('Transaction hash:', receipt.txHash.toString());
+    console.log('Transaction status:', receipt.status);
 
     // Get the transaction effect to access the note hashes
     const node = createAztecNodeClient(NODE_URL);
-    const txEffect = await node.getTxEffect(tx.txHash);
+    const txEffect = await node.getTxEffect(receipt.txHash);
 
     expect(txEffect).toBeDefined();
     if (!txEffect) {
       throw new Error('Cannot find txEffect from tx hash');
     }
 
-    // Compute the note hash using v3 formula:
-    // 1. commitment = poseidon2([owner, storage_slot, randomness], GENERATOR_INDEX__NOTE_HASH)
-    // 2. note_hash = poseidon2([commitment, value], GENERATOR_INDEX__NOTE_HASH)
+    // Compute the note hash:
+    // 1. commitment = poseidon2([owner, storage_slot, randomness], DOM_SEP__NOTE_HASH)
+    // 2. note_hash = poseidon2([commitment, value], DOM_SEP__NOTE_HASH)
     const commitment = await poseidon2HashWithSeparator(
       [deployer.toField(), STORAGE_SLOT, NOTE_RANDOMNESS],
-      GENERATOR_INDEX__NOTE_HASH
+      DOM_SEP__NOTE_HASH
     );
 
     const noteHash = await poseidon2HashWithSeparator(
       [commitment, new Fr(NOTE_VALUE)],
-      GENERATOR_INDEX__NOTE_HASH
+      DOM_SEP__NOTE_HASH
     );
 
     console.log('Computed inner note hash:', noteHash.toString());
@@ -124,16 +122,15 @@ describe('Note Hash Computation Verification', () => {
     const NOTE_VALUE = 42n;
 
     // Create note with different value
-    const tx = await gettingStartedContract.methods
+    const receipt = await gettingStartedContract.methods
       .create_note_for_user(NOTE_VALUE)
-      .send({ from: deployer })
-      .wait();
+      .send({ from: deployer });
 
-    expect(tx.status).toBe('success');
+    expect(receipt.executionResult).toBe('success');
 
     // Get the transaction effect
     const node = createAztecNodeClient(NODE_URL);
-    const txEffect = await node.getTxEffect(tx.txHash);
+    const txEffect = await node.getTxEffect(receipt.txHash);
     expect(txEffect).toBeDefined();
     if (!txEffect) {
       throw new Error('Cannot find txEffect from tx hash');
@@ -142,12 +139,12 @@ describe('Note Hash Computation Verification', () => {
     // Compute the note hash
     const commitment = await poseidon2HashWithSeparator(
       [deployer.toField(), STORAGE_SLOT, NOTE_RANDOMNESS],
-      GENERATOR_INDEX__NOTE_HASH
+      DOM_SEP__NOTE_HASH
     );
 
     const noteHash = await poseidon2HashWithSeparator(
       [commitment, new Fr(NOTE_VALUE)],
-      GENERATOR_INDEX__NOTE_HASH
+      DOM_SEP__NOTE_HASH
     );
 
     // Compute unique hash

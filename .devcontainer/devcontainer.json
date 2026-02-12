@@ -1,0 +1,19 @@
+{
+  "name": "Aztec Examples",
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "curl -s https://install.aztec.network | NON_INTERACTIVE=1 BIN_PATH=/usr/local/bin bash -s",
+  "customizations": {
+    "vscode": {
+      "settings": {},
+      "extensions": ["noir-lang.vscode-noir"]
+    }
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/root/workspace,type=bind",
+  "workspaceFolder": "/root/workspace"
+}

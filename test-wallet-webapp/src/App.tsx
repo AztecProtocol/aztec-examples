@@ -81,8 +81,7 @@ function App() {
         wallet,
         address,
       )
-        .send({ from: address })
-        .deployed();
+        .send({ from: address });
 
       setContractAddress(deployedContract.address);
 
@@ -114,7 +113,7 @@ function App() {
       const contract = await PrivateVotingContract.at(contractAddress, wallet);
       await contract.methods.cast_vote({ id: 1n }, 1n).send({
         from: address
-      }).wait();
+      });
 
       console.log('Vote cast successfully!');
     } catch (error) {

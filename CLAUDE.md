@@ -52,7 +52,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 3.0.0-devnet.6-patch.1  # For recursive_verification
+aztec-up 4.0.0-devnet.1-patch.0  # For recursive_verification
 ```
 
 ### Building Contracts
@@ -261,7 +261,7 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 
 **Version Compatibility**: All examples use the same Aztec version:
 
-- All examples: v3.0.0-devnet.6-patch.1
+- All examples: v4.0.0-devnet.1-patch.0
 
 ### JavaScript/TypeScript Dependencies
 

@@ -16,7 +16,7 @@ You can find additional examples in the Aztec monorepo [docs examples folder](ht
 
 ### 1. [Recursive Verification](./recursive_verification)
 
-**Aztec Version**: 3.0.0-devnet.4
+**Aztec Version**: 4.0.0-devnet.1-patch.0
 
 Demonstrates how to verify Noir circuit proofs within Aztec smart contracts using the UltraHonk proving system. This example showcases:
 
@@ -43,7 +43,7 @@ Demonstrates how to verify Noir circuit proofs within Aztec smart contracts usin
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific Aztec version (if needed)
-aztec-up 3.0.0-devnet.4
+aztec-up 4.0.0-devnet.1-patch.0
 ```
 
 ## Development Workflow

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 3.0.0-devnet.6-patch.1 to verify Noir proofs within smart contracts on the Aztec network.
+This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 4.0.0-devnet.1-patch.0 to verify Noir proofs within smart contracts on the Aztec network.
 
 The project consists of:
 

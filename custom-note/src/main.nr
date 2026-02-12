@@ -9,7 +9,7 @@ pub contract CustomNoteContract {
         storage::storage,
     };
     use aztec::state_vars::{PrivateSet, Owned};
-    use aztec::protocol_types::address::AztecAddress;
+    use aztec::protocol::address::AztecAddress;
     use aztec::messages::message_delivery::MessageDelivery;
     use aztec::note::constants::MAX_NOTES_PER_PAGE;
     use aztec::note::note_viewer_options::NoteViewerOptions;
@@ -23,12 +23,12 @@ pub contract CustomNoteContract {
 
     #[external("private")]
     fn insert(a: Field, b: Field, c: Field, d: Field) {
-        let sender = self.context.msg_sender().unwrap();
+        let sender = self.msg_sender();
         let note = CustomNote::new(a, b, c, d, sender);
         self.storage.custom_notes
             .at(sender)
             .insert(note)
-            .deliver(MessageDelivery.UNCONSTRAINED_ONCHAIN);
+            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
     }
 
     #[external("utility")]

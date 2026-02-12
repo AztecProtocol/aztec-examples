@@ -21,6 +21,6 @@ export async function setupSponsoredFPC(wallet: Wallet) {
     salt: new Fr(SPONSORED_FPC_SALT),
   });
 
-  await wallet.registerContract({ instance, artifact: SponsoredFPCContract.artifact });
+  await wallet.registerContract(instance, SponsoredFPCContract.artifact);
   return instance;
 }

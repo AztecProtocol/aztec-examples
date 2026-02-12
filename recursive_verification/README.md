@@ -11,12 +11,12 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `3.0.0-devnet.6-patch.1`
+**Aztec Version**: `4.0.0-devnet.1-patch.0`
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v22 or higher) and [Yarn](https://yarnpkg.com/)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 3.0.0-devnet.6-patch.1)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.0.0-devnet.1-patch.0)
 - [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.15) - for compiling vanilla Noir circuits
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
@@ -62,16 +62,18 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 3.0.0-devnet.6-patch.1
+aztec-up 4.0.0-devnet.1-patch.0
 ```
 
 This ensures compatibility with the contract dependencies.
 
 ### Install Nargo (for vanilla Noir circuits):
 
+The compatible `nargo` version should be installed with the `aztec` cli now.
+
 ```bash
-curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/install | bash
-noirup -v 1.0.0-beta.15
+which nargo
+~/.aztec/current/bin/nargo
 ```
 
 ## Build & Compile
@@ -161,7 +163,7 @@ For a fresh setup, run these commands in order:
 yarn install
 
 # 2. Setup Aztec
-aztec-up 3.0.0-devnet.6-patch.1
+aztec-up 4.0.0-devnet.1-patch.0
 
 # 3. Install nargo for vanilla Noir circuit compilation
 noirup -v 1.0.0-beta.15
@@ -221,25 +223,20 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
 ### Common Issues
 
 1. **"Cannot find module './contract/artifacts/ValueNotEqual'"**
-
    - Run `yarn ccc` to generate the contract artifacts
 
 2. **"Cannot find module './data.json'"**
-
    - Run `yarn data` to generate the proof data
 
 3. **"Failed to connect to PXE"**
-
    - Ensure the Aztec local network is running: `aztec start --local-network`
    - Check it's accessible at `http://localhost:8080`
 
 4. **"Proof verification failed"**
-
    - Ensure you've run `yarn data` after any circuit changes
    - Verify the circuit was compiled with `cd circuit && nargo compile`
 
 5. **Memory issues during proof generation**
-
    - The Barretenberg prover requires significant RAM
    - Close other applications or use a machine with more memory
 

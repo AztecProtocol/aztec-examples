@@ -4,12 +4,12 @@ This tutorial demonstrates how to build a browser-based wallet application for A
 
 ## Aztec Version Compatibility
 
-This example is compatible with **Aztec v3.0.0-devnet.6-patch.1**.
+This example is compatible with **Aztec v4.0.0-devnet.1-patch.0**.
 
 To set this version:
 
 ```bash
-aztec-up 3.0.0-devnet.6-patch.1
+aztec-up 4.0.0-devnet.1-patch.0
 ```
 
 ## What You'll Build
@@ -67,10 +67,10 @@ yarn install
 ### 2. Install Aztec Dependencies
 
 ```bash
-yarn add @aztec/accounts@3.0.0-devnet.6-patch.1 \
-         @aztec/aztec.js@3.0.0-devnet.6-patch.1 \
-         @aztec/test-wallet@3.0.0-devnet.6-patch.1 \
-         @aztec/noir-contracts.js@3.0.0-devnet.6-patch.1
+yarn add @aztec/accounts@4.0.0-devnet.1-patch.0 \
+         @aztec/aztec.js@4.0.0-devnet.1-patch.0 \
+         @aztec/test-wallet@4.0.0-devnet.1-patch.0 \
+         @aztec/noir-contracts.js@4.0.0-devnet.1-patch.0
 ```
 
 ### 3. Install Build Tooling Dependencies
@@ -260,7 +260,7 @@ Check browser console - these headers must be present in the response.
 **Problem**: Cannot resolve Aztec packages or their dependencies.
 
 **Solution**:
-- Ensure all Aztec packages are on the **same version** (e.g., `3.0.0-devnet.6-patch.1`)
+- Ensure all Aztec packages are on the **same version** (e.g., `4.0.0-devnet.1-patch.0`)
 - Verify WASM modules are excluded in `optimizeDeps.exclude`
 - Clear Vite cache: `rm -rf node_modules/.vite`
 

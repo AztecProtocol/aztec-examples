@@ -3,9 +3,9 @@ use aztec::macros::aztec;
 #[aztec]
 pub contract ValueNotEqual {
     use aztec::{
-        macros::{functions::{external, initializer, internal, only_self, view}, storage::storage},
-        oracle::debug_log::debug_log_format,
-        protocol_types::{address::AztecAddress, traits::ToField},
+        macros::{functions::{external, initializer, only_self, view}, storage::storage},
+        oracle::logging::debug_log_format,
+        protocol::{address::AztecAddress, traits::ToField},
         state_vars::{Map, PublicImmutable, PublicMutable},
     };
     use bb_proof_verification::{UltraHonkVerificationKey, UltraHonkZKProof, verify_honk_proof};
