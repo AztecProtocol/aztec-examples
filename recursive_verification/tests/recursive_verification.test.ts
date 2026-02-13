@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeAll, afterAll } from "vitest"
 import type { FieldLike } from "@aztec/aztec.js/abi"
-import { TxStatus } from "@aztec/aztec.js/tx"
+import { TxExecutionResult } from "@aztec/aztec.js/tx"
 import { AztecAddress } from "@aztec/aztec.js/addresses"
 import { createAztecNodeClient } from "@aztec/aztec.js/node"
 import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
@@ -48,11 +48,11 @@ describe("Recursive Verification", () => {
     console.log('Getting deploy method...')
     const ownerDeployMethod = await ownerAccountManager.getDeployMethod()
     console.log('Deploying account (this may take a while for proof generation)...')
-    const txReceipt = await ownerDeployMethod.send({
+    await ownerDeployMethod.send({
       from: AztecAddress.ZERO,
       fee: { paymentMethod: sponsoredPaymentMethod },
-    }).wait()
-    console.log(`Account deployed! Tx hash: ${txReceipt.txHash.toString()}`)
+    })
+    console.log('Account deployed!')
 
     const accounts = await testWallet.getAccounts()
     ownerAddress = accounts[0].item
@@ -80,8 +80,7 @@ describe("Recursive Verification", () => {
       data.vkHash as unknown as FieldLike
     )
       .send(sendOpts)
-      .deployed()
-
+      
     expect(valueNotEqualContract.address).toBeDefined()
     expect(valueNotEqualContract.address.toString()).not.toBe("")
 
@@ -100,11 +99,10 @@ describe("Recursive Verification", () => {
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
-    ).send(sendOpts).wait()
-
+    ).send(sendOpts)
     expect(tx).toBeDefined()
     expect(tx.txHash).toBeDefined()
-    expect(tx.status).toBe(TxStatus.SUCCESS)
+    expect(tx.executionResult).toBe(TxExecutionResult.SUCCESS)
 
     console.log(`Transaction hash: ${tx.txHash.toString()}`)
     console.log(`Transaction status: ${tx.status}`)
@@ -133,11 +131,10 @@ describe("Recursive Verification", () => {
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
-    ).send(sendOpts).wait()
-
+    ).send(sendOpts)
     expect(tx).toBeDefined()
     expect(tx.txHash).toBeDefined()
-    expect(tx.status).toBe(TxStatus.SUCCESS)
+    expect(tx.executionResult).toBe(TxExecutionResult.SUCCESS)
 
     // Check counter value is now 12
     const counterValue = await valueNotEqualContract.methods.get_counter(
@@ -160,8 +157,7 @@ describe("Recursive Verification", () => {
         from: AztecAddress.ZERO,
         fee: { paymentMethod: sponsoredPaymentMethod },
       })
-      .deployed()
-
+      
     const accounts = await testWallet.getAccounts()
     user1Address = accounts[1].item
 
@@ -178,16 +174,14 @@ describe("Recursive Verification", () => {
       data.vkHash as unknown as FieldLike
     )
       .send(sendOpts)
-      .deployed()
-
+      
     // Increment user1's counter
     await user1Contract.methods.increment(
       user1Address,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
-    ).send(sendOpts).wait()
-
+    ).send(sendOpts)
     // Check user1's counter
     const user1Counter = await user1Contract.methods.get_counter(
       user1Address

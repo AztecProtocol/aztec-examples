@@ -1,15 +1,15 @@
-// Custom UintNote for v3 with controllable randomness for hash verification demos
+// Custom UintNote for v4 with controllable randomness for hash verification demos
 // Based on aztec-nr UintNote but with create_note_with_randomness function
 
 use aztec::{
     context::PrivateContext,
-    keys::getters::{get_nsk_app, get_public_keys},
+    keys::getters::{get_nhk_app, get_public_keys, try_get_public_keys},
     macros::notes::custom_note,
     note::note_interface::{NoteHash, NoteType},
     oracle::notes::notify_created_note,
-    protocol_types::{
+    protocol::{
         address::AztecAddress,
-        constants::{GENERATOR_INDEX__NOTE_HASH, GENERATOR_INDEX__NOTE_NULLIFIER},
+        constants::{DOM_SEP__NOTE_HASH, DOM_SEP__NOTE_NULLIFIER},
         hash::poseidon2_hash_with_separator,
         traits::{Deserialize, Hash, Packable, Serialize, ToField},
     },
@@ -31,16 +31,16 @@ impl NoteHash for UintNote {
         storage_slot: Field,
         randomness: Field,
     ) -> Field {
-        // v3 hash computation:
-        // 1. commitment = poseidon2([owner, storage_slot, randomness], GENERATOR_INDEX__NOTE_HASH)
-        // 2. note_hash = poseidon2([commitment, value], GENERATOR_INDEX__NOTE_HASH)
+        // Two-step hash matching partial note pattern:
+        // 1. commitment = poseidon2([owner, storage_slot, randomness], DOM_SEP__NOTE_HASH)
+        // 2. note_hash = poseidon2([commitment, value], DOM_SEP__NOTE_HASH)
         let commitment = poseidon2_hash_with_separator(
             [owner.to_field(), storage_slot, randomness],
-            GENERATOR_INDEX__NOTE_HASH,
+            DOM_SEP__NOTE_HASH,
         );
         poseidon2_hash_with_separator(
             [commitment, self.value.to_field()],
-            GENERATOR_INDEX__NOTE_HASH,
+            DOM_SEP__NOTE_HASH,
         )
     }
 
@@ -52,10 +52,10 @@ impl NoteHash for UintNote {
     ) -> Field {
         let owner_npk_m = get_public_keys(owner).npk_m;
         let owner_npk_m_hash = owner_npk_m.hash();
-        let secret = context.request_nsk_app(owner_npk_m_hash);
+        let secret = context.request_nhk_app(owner_npk_m_hash);
         poseidon2_hash_with_separator(
             [note_hash_for_nullification, secret],
-            GENERATOR_INDEX__NOTE_NULLIFIER,
+            DOM_SEP__NOTE_NULLIFIER,
         )
     }
 
@@ -63,14 +63,16 @@ impl NoteHash for UintNote {
         self,
         owner: AztecAddress,
         note_hash_for_nullification: Field,
-    ) -> Field {
-        let owner_npk_m = get_public_keys(owner).npk_m;
-        let owner_npk_m_hash = owner_npk_m.hash();
-        let secret = get_nsk_app(owner_npk_m_hash);
-        poseidon2_hash_with_separator(
-            [note_hash_for_nullification, secret],
-            GENERATOR_INDEX__NOTE_NULLIFIER,
-        )
+    ) -> Option<Field> {
+        try_get_public_keys(owner).map(|public_keys| {
+            let owner_npk_m = public_keys.npk_m;
+            let owner_npk_m_hash = owner_npk_m.hash();
+            let secret = get_nhk_app(owner_npk_m_hash);
+            poseidon2_hash_with_separator(
+                [note_hash_for_nullification, secret],
+                DOM_SEP__NOTE_NULLIFIER,
+            )
+        })
     }
 }
 

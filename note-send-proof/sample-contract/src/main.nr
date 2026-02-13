@@ -8,7 +8,7 @@ pub contract GettingStarted {
             functions::{initializer, external},
             storage::storage,
         },
-        protocol_types::address::AztecAddress,
+        protocol::address::AztecAddress,
     };
 
     use uint_note::uint_note::{UintNote, create_note_with_randomness};
@@ -31,7 +31,7 @@ pub contract GettingStarted {
     /// The fixed randomness allows external verification of the note hash computation.
     #[external("private")]
     fn create_note_for_user(value: u128) {
-        let note_owner = self.context.msg_sender().unwrap();
+        let note_owner = self.msg_sender();
         let note = UintNote::new(value);
 
         // Use storage slot 1 for user notes (we're not using a Map, just a simple slot)

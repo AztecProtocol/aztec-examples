@@ -16,7 +16,7 @@ pub contract PasswordAccount {
             get_nullifier_membership_witness::get_low_nullifier_membership_witness,
             notes::{get_sender_for_tags, set_sender_for_tags},
         },
-        protocol_types::{address::AztecAddress, hash::poseidon2_hash},
+        protocol::{address::AztecAddress, hash::poseidon2_hash},
         state_vars::PublicImmutable,
     };
 
@@ -77,7 +77,7 @@ pub contract PasswordAccount {
     #[view]
     fn verify_private_authwit(inner_hash: Field, password: Field) -> Field {
         let actions = AccountActions::init(self.context, is_valid_impl);
-        actions.verify_private_authwit(inner_hash, password);
+        actions.verify_private_authwit(inner_hash, password)
     }
 
     #[contract_library_method]
@@ -111,7 +111,7 @@ pub contract PasswordAccount {
         let nullifier = compute_authwit_nullifier(self.address, inner_hash);
         let siloed_nullifier = compute_siloed_nullifier(consumer, nullifier);
         let lower_wit =
-            get_low_nullifier_membership_witness(self.context.block_number(), siloed_nullifier);
+            get_low_nullifier_membership_witness(self.context.block_header(), siloed_nullifier);
         let is_spent = lower_wit.leaf_preimage.nullifier == siloed_nullifier;
 
         !is_spent & valid_in_private

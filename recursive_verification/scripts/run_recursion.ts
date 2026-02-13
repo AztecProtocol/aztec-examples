@@ -72,8 +72,7 @@ async function main() {
     .send({
       from: AztecAddress.ZERO,
       fee: { paymentMethod: sponsoredPaymentMethod },
-    })
-    .deployed();
+    });
   const accounts = await testWallet.getAccounts();
 
   const valueNotEqual = await ValueNotEqualContract.deploy(
@@ -85,8 +84,7 @@ async function main() {
     .send({
       from: accounts[0].item,
       fee: { paymentMethod: sponsoredPaymentMethod },
-    })
-    .deployed();
+    });
 
   const opts = {
     from: accounts[0].item,
@@ -107,7 +105,7 @@ async function main() {
     .simulate({ from: accounts[0].item });
   console.log(`Counter value: ${counterValue}`);
 
-  await interaction.send(opts).wait();
+  await interaction.send(opts);
 
   counterValue = await valueNotEqual.methods
     .get_counter(accounts[0].item)

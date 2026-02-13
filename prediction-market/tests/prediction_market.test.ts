@@ -67,7 +67,7 @@ describe("Prediction Market Contract - Full Privacy", () => {
       wallet,
       adminAddress,
       INITIAL_LIQUIDITY
-    ).send({ from: adminAddress }).deployed()
+    ).send({ from: adminAddress })
 
     expect(market.address).toBeDefined()
     console.log("Contract deployed at address:", market.address.toString())
@@ -89,9 +89,9 @@ describe("Prediction Market Contract - Full Privacy", () => {
 
     // deposit() is now a PRIVATE function - creates private collateral notes
     const tx = await market.methods.deposit(depositAmount)
-      .send({ from: aliceAddress }).wait()
+      .send({ from: aliceAddress })
 
-    expect(tx.status).toBe('success')
+    expect(tx.executionResult).toBe('success')
 
     // Collateral balance is now private (sums private notes)
     const balance = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
@@ -110,9 +110,9 @@ describe("Prediction Market Contract - Full Privacy", () => {
       true, // is_yes
       buyAmount,
       minShares,
-    ).send({ from: aliceAddress }).wait()
+    ).send({ from: aliceAddress })
 
-    expect(tx.status).toBe('success')
+    expect(tx.executionResult).toBe('success')
     console.log("Alice bought YES with FULL PRIVACY (public function doesn't know who)")
 
     // Check private collateral was deducted
@@ -147,16 +147,16 @@ describe("Prediction Market Contract - Full Privacy", () => {
 
     // Bob deposits privately
     await market.methods.deposit(depositAmount)
-      .send({ from: bobAddress }).wait()
+      .send({ from: bobAddress })
 
     // Bob buys NO with full privacy
     const tx = await market.methods.buy_outcome(
       false, // is_yes = false (NO)
       buyAmount,
       0n, // no slippage protection for this test
-    ).send({ from: bobAddress }).wait()
+    ).send({ from: bobAddress })
 
-    expect(tx.status).toBe('success')
+    expect(tx.executionResult).toBe('success')
     console.log("Bob bought NO with FULL PRIVACY")
 
     const noBalance = await market.methods.get_no_balance(bobAddress).simulate({ from: bobAddress })
@@ -186,9 +186,9 @@ describe("Prediction Market Contract - Full Privacy", () => {
 
     // withdraw() is now a PRIVATE function
     const tx = await market.methods.withdraw(withdrawAmount)
-      .send({ from: aliceAddress }).wait()
+      .send({ from: aliceAddress })
 
-    expect(tx.status).toBe('success')
+    expect(tx.executionResult).toBe('success')
 
     const balanceAfter = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
     expect(balanceAfter).toBe(balanceBefore - withdrawAmount)

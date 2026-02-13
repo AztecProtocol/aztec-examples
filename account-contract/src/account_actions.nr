@@ -1,7 +1,7 @@
 use aztec::context::PrivateContext;
 
-use aztec::protocol_types::{
-    constants::GENERATOR_INDEX__TX_NULLIFIER, hash::poseidon2_hash_with_separator, traits::Hash,
+use aztec::protocol::{
+    constants::DOM_SEP__TX_NULLIFIER, hash::poseidon2_hash_with_separator, traits::Hash,
 };
 
 use aztec::authwit::auth::{compute_authwit_message_hash, IS_VALID_SELECTOR};
@@ -76,7 +76,7 @@ impl AccountActions<&mut PrivateContext> {
         if cancellable {
             let tx_nullifier = poseidon2_hash_with_separator(
                 [app_payload.tx_nonce],
-                GENERATOR_INDEX__TX_NULLIFIER,
+                DOM_SEP__TX_NULLIFIER,
             );
             self.context.push_nullifier(tx_nullifier);
         }
@@ -95,7 +95,7 @@ impl AccountActions<&mut PrivateContext> {
         // consume the message.
         // This ensures that contracts cannot consume messages that are not intended for them.
         let message_hash = compute_authwit_message_hash(
-            self.context.msg_sender().unwrap(),
+            self.context.maybe_msg_sender().unwrap(),
             self.context.chain_id(),
             self.context.version(),
             inner_hash,

@@ -10,11 +10,11 @@ pub contract PredictionMarket {
     use aztec::{
         macros::{functions::{external, initializer, only_self}, storage::storage},
         messages::message_delivery::MessageDelivery,
-        protocol_types::address::AztecAddress,
-        state_vars::{PublicMutable, Owned, state_variable::StateVariable},
+        protocol::address::AztecAddress,
+        state_vars::{PublicMutable, Owned, StateVariable},
     };
-    use dep::balance_set::balance_set::BalanceSet;
-    use dep::uint_note::uint_note::{UintNote, PartialUintNote};
+    use balance_set::BalanceSet;
+    use uint_note::{UintNote, PartialUintNote};
 
     #[storage]
     struct Storage<Context> {
@@ -47,18 +47,18 @@ pub contract PredictionMarket {
     #[external("private")]
     fn deposit(amount: u128) {
         assert(amount > 0, "ZERO_AMOUNT");
-        let sender = self.context.msg_sender().unwrap();
+        let sender = self.msg_sender();
         self.storage.collateral_balances.at(sender).add(amount)
-            .deliver(MessageDelivery.UNCONSTRAINED_ONCHAIN);
+            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
     }
 
     /// Withdraw collateral privately. Consumes notes and returns change.
     #[external("private")]
     fn withdraw(amount: u128) {
         assert(amount > 0, "ZERO_AMOUNT");
-        let sender = self.context.msg_sender().unwrap();
+        let sender = self.msg_sender();
         self.storage.collateral_balances.at(sender).sub(amount)
-            .deliver(MessageDelivery.UNCONSTRAINED_ONCHAIN);
+            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
     }
 
     /// Buy YES or NO shares with full identity privacy.
@@ -67,12 +67,12 @@ pub contract PredictionMarket {
     fn buy_outcome(is_yes: bool, collateral_amount: u128, min_shares_out: u128) {
         assert(collateral_amount > 0, "INSUFFICIENT_COLLATERAL");
 
-        let sender = self.context.msg_sender().unwrap();
-        let contract_address = self.context.this_address();
+        let sender = self.msg_sender();
+        let contract_address = self.address;
 
         // Consume collateral - sub handles note consumption and change
         self.storage.collateral_balances.at(sender).sub(collateral_amount)
-            .deliver(MessageDelivery.UNCONSTRAINED_ONCHAIN);
+            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
 
         // Create partial note for shares
         // Use get_storage_slot() from the Owned wrapper - it handles owner derivation internally

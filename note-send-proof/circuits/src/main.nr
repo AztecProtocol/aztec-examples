@@ -1,12 +1,11 @@
-use dep::aztec::protocol_types::{
+use aztec::protocol::{
     address::AztecAddress,
-    constants::{GENERATOR_INDEX__SILOED_NOTE_HASH, GENERATOR_INDEX__UNIQUE_NOTE_HASH}, 
+    hash::{compute_siloed_note_hash, compute_unique_note_hash},
     traits::FromField,
 };
-use dep::aztec::note::note_interface::NoteHash;
-use dep::poseidon;
+use aztec::note::note_interface::NoteHash;
 
-use dep::uint_note::uint_note::UintNote;
+use uint_note::uint_note::UintNote;
 
 fn main(
     settled_note_hash: pub Field,
@@ -17,11 +16,12 @@ fn main(
     storage_slot: Field,
     note_nonce: Field,
 ) {
-    let note = UintNote::new_with_randomness(value, AztecAddress::from_field(recipient), randomness);
-    let note_hash = note.compute_note_hash(storage_slot);
+    let owner = AztecAddress::from_field(recipient);
+    let note = UintNote::new(value);
+    let note_hash = note.compute_note_hash(owner, storage_slot, randomness);
 
-    let siloed_note_hash = poseidon::poseidon2::Poseidon2::hash([GENERATOR_INDEX__SILOED_NOTE_HASH as Field, contract_address, note_hash], 3);
-    let unique_note_hash = poseidon::poseidon2::Poseidon2::hash([GENERATOR_INDEX__UNIQUE_NOTE_HASH as Field, note_nonce, siloed_note_hash], 3);
+    let siloed_note_hash = compute_siloed_note_hash(AztecAddress::from_field(contract_address), note_hash);
+    let unique_note_hash = compute_unique_note_hash(note_nonce, siloed_note_hash);
 
     assert_eq(settled_note_hash, unique_note_hash);
 }

@@ -8,8 +8,8 @@ import { poseidon2HashWithSeparator } from '@aztec/foundation/crypto/poseidon';
 import fs from 'fs';
 import { exit } from 'process';
 
-// GENERATOR_INDEX__NOTE_HASH from Aztec protocol types
-const GENERATOR_INDEX__NOTE_HASH = 1;
+// DOM_SEP__NOTE_HASH from Aztec protocol types (v4 value)
+const DOM_SEP__NOTE_HASH = 116501019;
 const NODE_URL = 'http://localhost:8080';
 
 // Must match NOTE_RANDOMNESS in the contract
@@ -37,37 +37,36 @@ async function main() {
   console.log('Deploying GettingStarted contract...');
   const gettingStarted = await GettingStartedContract.deploy(wallet, deployerAddress).send({
     from: deployerAddress,
-  }).wait();
+  });
 
-  console.log('CONTRACT DEPLOYED AT', gettingStarted.contract.address.toString());
+  console.log('CONTRACT DEPLOYED AT', gettingStarted.address.toString());
 
   const NOTE_VALUE = 69n;
 
   console.log('Creating note for user...');
-  const sentTx = await gettingStarted.contract.methods
+  const receipt = await gettingStarted.methods
     .create_note_for_user(NOTE_VALUE)
-    .send({ from: deployerAddress })
-    .wait();
-  console.log('TX HASH', sentTx.txHash.toString());
+    .send({ from: deployerAddress });
+  console.log('TX HASH', receipt.txHash.toString());
 
   const node = createAztecNodeClient(NODE_URL);
-  const txEffect = await node.getTxEffect(sentTx.txHash);
+  const txEffect = await node.getTxEffect(receipt.txHash);
 
   if (txEffect === undefined) {
     throw new Error('Cannot find txEffect from tx hash');
   }
 
-  // v3 hash computation formula:
-  // 1. commitment = poseidon2([owner, storage_slot, randomness], GENERATOR_INDEX__NOTE_HASH)
-  // 2. note_hash = poseidon2([commitment, value], GENERATOR_INDEX__NOTE_HASH)
+  // Note hash computation formula:
+  // 1. commitment = poseidon2([owner, storage_slot, randomness], DOM_SEP__NOTE_HASH)
+  // 2. note_hash = poseidon2([commitment, value], DOM_SEP__NOTE_HASH)
   const commitment = await poseidon2HashWithSeparator(
     [deployerAddress.toField(), STORAGE_SLOT, NOTE_RANDOMNESS],
-    GENERATOR_INDEX__NOTE_HASH
+    DOM_SEP__NOTE_HASH
   );
 
   const noteHash = await poseidon2HashWithSeparator(
     [commitment, new Fr(NOTE_VALUE)],
-    GENERATOR_INDEX__NOTE_HASH
+    DOM_SEP__NOTE_HASH
   );
 
   const INDEX_OF_NOTE_HASH_IN_TRANSACTION = 0;
@@ -76,7 +75,7 @@ async function main() {
 
   const noteHashNonce = await computeNoteHashNonce(nonceGenerator, INDEX_OF_NOTE_HASH_IN_TRANSACTION);
 
-  const siloedNoteHash = await siloNoteHash(gettingStarted.contract.address, noteHash);
+  const siloedNoteHash = await siloNoteHash(gettingStarted.address, noteHash);
 
   const computedUniqueNoteHash = await computeUniqueNoteHash(
     noteHashNonce,
@@ -101,13 +100,13 @@ async function main() {
 
   const outputData = {
     settled_note_hash: txEffect.data.noteHashes[0].toString(),
-    contract_address: gettingStarted.contract.address.toString(),
+    contract_address: gettingStarted.address.toString(),
     recipient: deployerAddress.toString(),
     randomness: NOTE_RANDOMNESS.toString(),
     value: Number(NOTE_VALUE),
     storage_slot: STORAGE_SLOT.toString(),
     note_nonce: noteHashNonce.toString(),
-    tx_hash: sentTx.txHash.toString(),
+    tx_hash: receipt.txHash.toString(),
   };
 
   console.log('\nREQUIRED INPUT', outputData);

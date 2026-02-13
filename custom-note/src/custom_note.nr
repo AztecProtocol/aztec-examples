@@ -1,7 +1,7 @@
 use aztec::{
     macros::notes::note,
     oracle::random::random,
-    protocol_types::{address::AztecAddress, traits::{Deserialize, Packable, Serialize}},
+    protocol::{address::AztecAddress, traits::{Deserialize, Packable, Serialize}},
 };
 
 #[derive(Eq, Serialize, Deserialize, Packable)]
