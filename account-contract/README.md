@@ -172,25 +172,25 @@ When implementing custom account contracts in Aztec, be aware of these critical 
 
 ## Aztec Version Compatibility
 
-This example is compatible with **Aztec v4.0.0-devnet.1-patch.0**.
+This example is compatible with **Aztec v4.0.0-devnet.2-patch.1**.
 
 To set this version:
 
 ```bash
-aztec-up 4.0.0-devnet.1-patch.0
+aztec-up 4.0.0-devnet.2-patch.1
 ```
 
 ## Dependencies
 
 ### Noir Dependencies
 
-- **aztec**: v4.0.0-devnet.1-patch.0
+- **aztec**: v4.0.0-devnet.2-patch.1
 
 ### TypeScript Dependencies
 
-- **@aztec/aztec.js**: 4.0.0-devnet.1-patch.0
-- **@aztec/accounts**: 4.0.0-devnet.1-patch.0
-- **@aztec/stdlib**: 4.0.0-devnet.1-patch.0
+- **@aztec/aztec.js**: 4.0.0-devnet.2-patch.1
+- **@aztec/accounts**: 4.0.0-devnet.2-patch.1
+- **@aztec/stdlib**: 4.0.0-devnet.2-patch.1
 - **@aztec/entrypoints**: Included in aztec.js
 
 ## Project Structure

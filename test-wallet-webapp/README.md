@@ -4,19 +4,19 @@ This tutorial demonstrates how to build a browser-based wallet application for A
 
 ## Aztec Version Compatibility
 
-This example is compatible with **Aztec v4.0.0-devnet.1-patch.0**.
+This example is compatible with **Aztec v4.0.0-devnet.2-patch.1**.
 
 To set this version:
 
 ```bash
-aztec-up 4.0.0-devnet.1-patch.0
+aztec-up 4.0.0-devnet.2-patch.1
 ```
 
 ## What You'll Build
 
 A web application that demonstrates three core Aztec operations:
 
-1. **Create Wallet** - Initialize a TestWallet with a Schnorr account
+1. **Create Wallet** - Initialize an EmbeddedWallet with a Schnorr account
 2. **Deploy Contract** - Deploy the PrivateVoting contract to Aztec
 3. **Cast Vote** - Interact with the deployed contract
 
@@ -67,10 +67,10 @@ yarn install
 ### 2. Install Aztec Dependencies
 
 ```bash
-yarn add @aztec/accounts@4.0.0-devnet.1-patch.0 \
-         @aztec/aztec.js@4.0.0-devnet.1-patch.0 \
-         @aztec/test-wallet@4.0.0-devnet.1-patch.0 \
-         @aztec/noir-contracts.js@4.0.0-devnet.1-patch.0
+yarn add @aztec/accounts@4.0.0-devnet.2-patch.1 \
+         @aztec/aztec.js@4.0.0-devnet.2-patch.1 \
+         @aztec/wallets@4.0.0-devnet.2-patch.1 \
+         @aztec/noir-contracts.js@4.0.0-devnet.2-patch.1
 ```
 
 ### 3. Install Build Tooling Dependencies
@@ -186,14 +186,11 @@ optimizeDeps: {
 
 ```typescript
 import { createAztecNodeClient } from '@aztec/aztec.js/node'
-import { getPXEConfig } from '@aztec/pxe/client/lazy';
-import { TestWallet } from '@aztec/test-wallet/client/lazy';
+import { EmbeddedWallet } from '@aztec/wallets/embedded';
 
 const nodeURL = 'http://localhost:8080';
 const aztecNode = await createAztecNodeClient(nodeURL);
-const config = getPXEConfig();
-config.dataDirectory = 'pxe';
-const wallet = await TestWallet.create(aztecNode, config);
+const wallet = await EmbeddedWallet.create(aztecNode);
 ```
 
 ### Creating a Schnorr Account
@@ -216,8 +213,7 @@ const accountAddress = accountManager.address;
 import { PrivateVotingContract } from '@aztec/noir-contracts.js/PrivateVoting';
 
 const deployedContract = await PrivateVotingContract.deploy(wallet, address)
-  .send({ from: address })
-  .deployed();
+  .send({ from: address });
 ```
 
 ### Calling Contract Methods
@@ -227,8 +223,7 @@ import { AztecAddress } from '@aztec/aztec.js/addresses'
 
 const contract = await PrivateVotingContract.at(contractAddress, wallet);
 await contract.methods.cast_vote(AztecAddress.random())
-  .send({ from: address })
-  .wait();
+  .send({ from: address });
 ```
 
 ---
@@ -260,7 +255,7 @@ Check browser console - these headers must be present in the response.
 **Problem**: Cannot resolve Aztec packages or their dependencies.
 
 **Solution**:
-- Ensure all Aztec packages are on the **same version** (e.g., `4.0.0-devnet.1-patch.0`)
+- Ensure all Aztec packages are on the **same version** (e.g., `4.0.0-devnet.2-patch.1`)
 - Verify WASM modules are excluded in `optimizeDeps.exclude`
 - Clear Vite cache: `rm -rf node_modules/.vite`
 

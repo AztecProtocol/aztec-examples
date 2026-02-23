@@ -4,23 +4,21 @@ import { setLogCallback } from './consoleInterceptor'
 import { createAztecNodeClient } from '@aztec/aztec.js/node'
 
 import { getInitialTestAccountsData } from '@aztec/accounts/testing';
-import { getPXEConfig } from '@aztec/pxe/client/lazy';
-import { TestWallet } from '@aztec/test-wallet/client/lazy';
+import { EmbeddedWallet } from '@aztec/wallets/embedded';
 
 import {PrivateVotingContract} from '@aztec/noir-contracts.js/PrivateVoting';
 import { AztecAddress } from '@aztec/aztec.js/addresses'
-import type { TestWallet as TestWalletType } from '@aztec/test-wallet/client/lazy';
 
 function App() {
   const [output, setOutput] = useState<string[]>([])
   const [isCreatingWallet, setIsCreatingWallet] = useState(false)
   const [isDeployingContract, setIsDeployingContract] = useState(false)
   const [isCastingVote, setIsCastingVote] = useState(false)
-  const [wallet, setWallet] = useState<TestWalletType | null>(null)
+  const [wallet, setWallet] = useState<EmbeddedWallet | null>(null)
   const [address, setAddress] = useState<AztecAddress | null>(null)
   const [contractAddress, setContractAddress] = useState<AztecAddress | null>(null)
 
-  const createTestWalletAndSchnorrAccount = async () => {
+  const createWalletAndSchnorrAccount = async () => {
     setIsCreatingWallet(true)
     setOutput([])
 
@@ -33,9 +31,7 @@ function App() {
       const nodeURL = 'http://localhost:8080';
 
       const aztecNode = await createAztecNodeClient(nodeURL);
-      const config = getPXEConfig();
-      config.dataDirectory = 'pxe';
-      const newWallet = await TestWallet.create(aztecNode, config);
+      const newWallet = await EmbeddedWallet.create(aztecNode);
 
       const [accountData] = await getInitialTestAccountsData();
       if (!accountData) {
@@ -137,7 +133,7 @@ function App() {
           padding: '0 20px'
         }}>
           <button
-            onClick={createTestWalletAndSchnorrAccount}
+            onClick={createWalletAndSchnorrAccount}
             disabled={isCreatingWallet || !!wallet}
             style={{
               padding: '10px 20px',

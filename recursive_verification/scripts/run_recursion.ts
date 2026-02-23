@@ -5,10 +5,9 @@ import { getSponsoredFPCInstance } from "./sponsored_fpc.js";
 import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC";
 import { ValueNotEqualContract } from "../contract/artifacts/ValueNotEqual";
 import data from "../data.json";
-import { getPXEConfig } from "@aztec/pxe/config";
-import { TestWallet } from "@aztec/test-wallet/server";
+import { EmbeddedWallet } from "@aztec/wallets/embedded";
 import { AztecAddress } from "@aztec/aztec.js/addresses";
-import { rm } from "node:fs/promises";
+import { Fr } from "@aztec/aztec.js/fields";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { serializePrivateExecutionSteps } from "@aztec/stdlib/kernel";
@@ -47,14 +46,10 @@ async function captureProfile(
   );
 }
 
-export const setupWallet = async (): Promise<TestWallet> => {
+export const setupWallet = async (): Promise<EmbeddedWallet> => {
   try {
     const aztecNode = await createAztecNodeClient(NODE_URL);
-    const config = getPXEConfig();
-    await rm("pxe", { recursive: true, force: true });
-    config.dataDirectory = "pxe";
-    config.proverEnabled = true;
-    let wallet = await TestWallet.create(aztecNode, config);
+    let wallet = await EmbeddedWallet.create(aztecNode, { ephemeral: true });
     await wallet.registerContract(sponsoredFPC, SponsoredFPCContract.artifact);
 
     return wallet;
@@ -66,7 +61,7 @@ export const setupWallet = async (): Promise<TestWallet> => {
 
 async function main() {
   const testWallet = await setupWallet();
-  const account = await testWallet.createAccount();
+  const account = await testWallet.createSchnorrAccount(Fr.random(), Fr.random());
   const manager = await account.getDeployMethod();
   await manager
     .send({
