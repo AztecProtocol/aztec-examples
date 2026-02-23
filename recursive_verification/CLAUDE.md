@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 4.0.0-devnet.1-patch.0 to verify Noir proofs within smart contracts on the Aztec network.
+This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 4.0.0-devnet.2-patch.1 to verify Noir proofs within smart contracts on the Aztec network.
 
 The project consists of:
 
@@ -29,12 +29,9 @@ aztec start --local-network
 
 ### Circuit Development
 
-Vanilla Noir circuits require `nargo` (install via [noirup](https://github.com/noir-lang/noirup)):
+Vanilla Noir circuits require `nargo` (version 1.0.0-beta.18, bundled with the Aztec CLI at `~/.aztec/current/bin/nargo`):
 
 ```bash
-# Install nargo
-noirup -v 1.0.0-beta.15
-
 # Compile the Noir circuit
 cd circuit && nargo compile
 

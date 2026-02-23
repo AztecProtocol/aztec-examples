@@ -3,8 +3,7 @@ import { Fr } from '@aztec/aztec.js/fields';
 import { createAztecNodeClient, waitForNode } from '@aztec/aztec.js/node';
 import { AztecAddress } from '@aztec/aztec.js/addresses';
 import { getInitialTestAccountsData } from '@aztec/accounts/testing';
-import { TestWallet } from '@aztec/test-wallet/server';
-import type { TestWallet as TestWalletType } from '@aztec/test-wallet/server';
+import { EmbeddedWallet } from '@aztec/wallets/embedded';
 import { computeNoteHashNonce, computeUniqueNoteHash, siloNoteHash } from '@aztec/stdlib/hash';
 import { poseidon2HashWithSeparator } from '@aztec/foundation/crypto/poseidon';
 import { GettingStartedContract } from '../contract/artifacts/GettingStarted.js';
@@ -23,7 +22,7 @@ const STORAGE_SLOT = new Fr(1);
 const TEST_TIMEOUT = 120000; // 120 seconds
 
 describe('Note Hash Computation Verification', () => {
-  let wallet: TestWalletType;
+  let wallet: EmbeddedWallet;
   let deployer: AztecAddress;
   let gettingStartedContract: GettingStartedContract;
 
@@ -34,9 +33,9 @@ describe('Note Hash Computation Verification', () => {
     await waitForNode(aztecNode);
     console.log('Aztec node connected');
 
-    // Create TestWallet
-    wallet = await TestWallet.create(aztecNode, { dataDirectory: 'pxe-test-data' });
-    console.log('TestWallet created');
+    // Create EmbeddedWallet
+    wallet = await EmbeddedWallet.create(aztecNode, { ephemeral: true });
+    console.log('EmbeddedWallet created');
 
     // Get test account data
     const accountsData = await getInitialTestAccountsData();
