@@ -5,6 +5,6 @@ compiler_version = ">=1.0.0"
 type = "contract"
 
 [dependencies]
-aztec = { git = "https://github.com/AztecProtocol/aztec-nr/", tag = "v4.0.0-devnet.1-patch.0", directory = "aztec" }
+aztec = { git = "https://github.com/AztecProtocol/aztec-nr/", tag = "v4.0.0-devnet.2-patch.1", directory = "aztec" }
 # Local uint_note with create_note_with_randomness for hash verification demo
 uint_note = { path = "../uint-note" }

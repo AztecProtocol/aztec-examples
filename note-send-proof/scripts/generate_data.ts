@@ -2,7 +2,7 @@ import { GettingStartedContract } from '../contract/artifacts/GettingStarted.js'
 import { Fr } from '@aztec/aztec.js/fields';
 import { createAztecNodeClient, waitForNode } from '@aztec/aztec.js/node';
 import { getInitialTestAccountsData } from '@aztec/accounts/testing';
-import { TestWallet } from '@aztec/test-wallet/server';
+import { EmbeddedWallet } from '@aztec/wallets/embedded';
 import { computeNoteHashNonce, computeUniqueNoteHash, siloNoteHash } from '@aztec/stdlib/hash';
 import { poseidon2HashWithSeparator } from '@aztec/foundation/crypto/poseidon';
 import fs from 'fs';
@@ -23,8 +23,8 @@ async function main() {
   await waitForNode(aztecNode);
   console.log('Aztec node connected');
 
-  const wallet = await TestWallet.create(aztecNode, { dataDirectory: 'pxe-data-gen' });
-  console.log('TestWallet created');
+  const wallet = await EmbeddedWallet.create(aztecNode, { ephemeral: true });
+  console.log('EmbeddedWallet created');
 
   const accountsData = await getInitialTestAccountsData();
   const deployerAccount = await wallet.createSchnorrAccount(
