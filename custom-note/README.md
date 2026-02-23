@@ -65,12 +65,12 @@ CustomNote.view_custom_notes(owner_address)
 
 ## Dependencies
 
-- Aztec v4.0.0-devnet.2-patch.1
+- Aztec v4.0.0-devnet.1-patch.0
 
 To set this version:
 
 ```bash
-aztec-up 4.0.0-devnet.2-patch.1
+aztec-up 4.0.0-devnet.1-patch.0
 ```
 
 ## Project Structure

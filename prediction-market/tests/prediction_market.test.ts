@@ -2,7 +2,8 @@ import { describe, expect, test, beforeAll } from "@jest/globals"
 import { createAztecNodeClient, waitForNode } from '@aztec/aztec.js/node'
 import { AztecAddress } from '@aztec/aztec.js/addresses'
 import { getInitialTestAccountsData } from '@aztec/accounts/testing'
-import { EmbeddedWallet } from '@aztec/wallets/embedded'
+import { TestWallet } from '@aztec/test-wallet/server'
+import type { TestWallet as TestWalletType } from '@aztec/test-wallet/server'
 import { PredictionMarketContract, PredictionMarketContractArtifact } from '../artifacts/PredictionMarket.js'
 
 const NODE_URL = 'http://localhost:8080'
@@ -14,7 +15,7 @@ const INITIAL_LIQUIDITY = 10000n
 const PRICE_PRECISION = 1_000_000n
 
 describe("Prediction Market Contract - Full Privacy", () => {
-  let wallet: EmbeddedWallet
+  let wallet: TestWalletType
   let adminAddress: AztecAddress
   let aliceAddress: AztecAddress
   let bobAddress: AztecAddress
@@ -26,9 +27,9 @@ describe("Prediction Market Contract - Full Privacy", () => {
     await waitForNode(aztecNode)
     console.log('Aztec node connected')
 
-    // Create EmbeddedWallet
-    wallet = await EmbeddedWallet.create(aztecNode, { ephemeral: true })
-    console.log('EmbeddedWallet created')
+    // Create TestWallet using server version
+    wallet = await TestWallet.create(aztecNode, { dataDirectory: 'pxe-test-data' })
+    console.log('TestWallet created')
 
     // Get test account data
     const accountsData = await getInitialTestAccountsData()

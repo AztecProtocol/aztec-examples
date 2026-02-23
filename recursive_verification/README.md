@@ -11,13 +11,13 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `4.0.0-devnet.2-patch.1`
+**Aztec Version**: `4.0.0-devnet.1-patch.0`
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v22 or higher) and [Yarn](https://yarnpkg.com/)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.0.0-devnet.2-patch.1)
-- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.18) - bundled with the Aztec CLI at `~/.aztec/current/bin/nargo`
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.0.0-devnet.1-patch.0)
+- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.15) - for compiling vanilla Noir circuits
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -62,21 +62,19 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 4.0.0-devnet.2-patch.1
+aztec-up 4.0.0-devnet.1-patch.0
 ```
 
 This ensures compatibility with the contract dependencies.
 
-### Nargo (for vanilla Noir circuits):
+### Install Nargo (for vanilla Noir circuits):
 
-The compatible `nargo` (version 1.0.0-beta.18) is bundled with the Aztec CLI:
+The compatible `nargo` version should be installed with the `aztec` cli now.
 
 ```bash
-~/.aztec/current/bin/nargo --version
-# nargo version = 1.0.0-beta.18
+which nargo
+~/.aztec/current/bin/nargo
 ```
-
-Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
 
 ## Build & Compile
 
@@ -165,10 +163,10 @@ For a fresh setup, run these commands in order:
 yarn install
 
 # 2. Setup Aztec
-aztec-up 4.0.0-devnet.2-patch.1
+aztec-up 4.0.0-devnet.1-patch.0
 
-# 3. Verify nargo is available (bundled with Aztec CLI)
-~/.aztec/current/bin/nargo --version
+# 3. Install nargo for vanilla Noir circuit compilation
+noirup -v 1.0.0-beta.15
 
 # 4. Compile circuit
 cd circuit && nargo compile && cd ..

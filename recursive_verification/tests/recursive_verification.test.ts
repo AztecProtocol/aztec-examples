@@ -2,11 +2,11 @@ import { describe, expect, test, beforeAll, afterAll } from "vitest"
 import type { FieldLike } from "@aztec/aztec.js/abi"
 import { TxExecutionResult } from "@aztec/aztec.js/tx"
 import { AztecAddress } from "@aztec/aztec.js/addresses"
-import { Fr } from "@aztec/aztec.js/fields"
 import { createAztecNodeClient } from "@aztec/aztec.js/node"
 import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
-import { EmbeddedWallet } from "@aztec/wallets/embedded"
+import { TestWallet } from "@aztec/test-wallet/server"
 import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC"
+import { getPXEConfig } from "@aztec/pxe/config"
 import { ValueNotEqualContract } from '../contract/artifacts/ValueNotEqual'
 import { getSponsoredFPCInstance } from '../scripts/sponsored_fpc'
 import data from '../data.json'
@@ -17,14 +17,14 @@ const NODE_URL = 'http://localhost:8080'
 const TEST_TIMEOUT = 600000 // 10 minutes
 
 describe("Recursive Verification", () => {
-  let testWallet: EmbeddedWallet
+  let testWallet: TestWallet
   let ownerAddress: AztecAddress
   let user1Address: AztecAddress
   let valueNotEqualContract: ValueNotEqualContract
   let sponsoredPaymentMethod: SponsoredFeePaymentMethod
 
   beforeAll(async () => {
-    // Setup EmbeddedWallet
+    // Setup TestWallet with PXE
     console.log(`Connecting to Aztec Node at ${NODE_URL}`)
     const aztecNode = await createAztecNodeClient(NODE_URL)
 
@@ -32,16 +32,19 @@ describe("Recursive Verification", () => {
     const sponsoredFPC = await getSponsoredFPCInstance()
     sponsoredPaymentMethod = new SponsoredFeePaymentMethod(sponsoredFPC.address)
 
-    // Create EmbeddedWallet
-    testWallet = await EmbeddedWallet.create(aztecNode, { ephemeral: true })
+    // Create PXE config and TestWallet
+    const config = getPXEConfig()
+    config.proverEnabled = true
+
+    testWallet = await TestWallet.create(aztecNode, config)
 
     // Register the sponsored FPC contract
     await testWallet.registerContract(sponsoredFPC, SponsoredFPCContract.artifact)
-    console.log('EmbeddedWallet configured')
+    console.log('TestWallet configured')
 
     // Create owner account
     console.log('Creating owner account...')
-    const ownerAccountManager = await testWallet.createSchnorrAccount(Fr.random(), Fr.random())
+    const ownerAccountManager = await testWallet.createAccount()
     console.log('Getting deploy method...')
     const ownerDeployMethod = await ownerAccountManager.getDeployMethod()
     console.log('Deploying account (this may take a while for proof generation)...')
@@ -147,7 +150,7 @@ describe("Recursive Verification", () => {
     const initialValue = 5
 
     // Create user1 account
-    const user1AccountManager = await testWallet.createSchnorrAccount(Fr.random(), Fr.random())
+    const user1AccountManager = await testWallet.createAccount()
     const user1DeployMethod = await user1AccountManager.getDeployMethod()
     await user1DeployMethod
       .send({

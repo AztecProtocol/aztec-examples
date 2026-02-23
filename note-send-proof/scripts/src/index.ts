@@ -5,7 +5,7 @@ import {
   Fr,
 } from '@aztec/aztec.js';
 import { getInitialTestAccountsData } from '@aztec/accounts/testing';
-import { EmbeddedWallet } from '@aztec/wallets/embedded';
+import { TestWallet } from '@aztec/test-wallet/server';
 import { computeNoteHashNonce, computeUniqueNoteHash, siloNoteHash } from '@aztec/stdlib/hash';
 import { poseidon2HashWithSeparator } from '@aztec/foundation/crypto';
 
@@ -17,7 +17,7 @@ export const NODE_URL = 'http://localhost:8080';
 const node = createAztecNodeClient(NODE_URL);
 await waitForNode(node);
 
-const wallet = await EmbeddedWallet.create(node, { ephemeral: true });
+const wallet = await TestWallet.create(node);
 
 const accountsData = await getInitialTestAccountsData();
 const deployerAccount = await wallet.createSchnorrAccount(

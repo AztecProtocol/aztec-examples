@@ -52,7 +52,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 4.0.0-devnet.2-patch.1  # For recursive_verification
+aztec-up 4.0.0-devnet.1-patch.0  # For recursive_verification
 ```
 
 ### Building Contracts
@@ -69,11 +69,12 @@ yarn ccc  # Compiles contract and generates TypeScript bindings
 
 ### Building Vanilla Noir Circuits
 
-The compatible `nargo` (version 1.0.0-beta.18) is bundled with the Aztec CLI at `~/.aztec/current/bin/nargo`. Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
+For vanilla Noir circuits (not Aztec contracts), install nargo separately:
 
 ```bash
-# Verify nargo is available
-~/.aztec/current/bin/nargo --version
+# Install nargo via noirup
+curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/install | bash
+noirup -v 1.0.0-beta.15
 
 # Compile a vanilla Noir circuit
 nargo compile
@@ -150,8 +151,8 @@ Complete workflow for the proof verification example:
 cd recursive_verification
 yarn install
 
-# 2. Verify nargo is available (bundled with Aztec CLI)
-~/.aztec/current/bin/nargo --version
+# 2. Install nargo for vanilla Noir circuit compilation
+noirup -v 1.0.0-beta.15
 
 # 3. Compile the Noir circuit
 cd circuit && nargo compile && cd ..
@@ -260,7 +261,7 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 
 **Version Compatibility**: All examples use the same Aztec version:
 
-- All examples: v4.0.0-devnet.2-patch.1
+- All examples: v4.0.0-devnet.1-patch.0
 
 ### JavaScript/TypeScript Dependencies
 

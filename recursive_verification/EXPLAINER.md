@@ -223,7 +223,7 @@ fn increment(
 ```typescript
 // 1. Connect to Aztec network and setup wallet
 const aztecNode = await createAztecNodeClient("http://localhost:8080");
-const wallet = await EmbeddedWallet.create(aztecNode, { ephemeral: true });
+const testWallet = await TestWallet.create(aztecNode, config);
 
 // 2. Deploy the contract with initial counter = 10 and VK hash
 const contract = await ValueNotEqualContract.deploy(

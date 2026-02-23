@@ -8,8 +8,7 @@ import { getContractInstanceFromInstantiationParams } from '@aztec/stdlib/contra
 import { SponsoredFPCContractArtifact } from '@aztec/noir-contracts.js/SponsoredFPC';
 import { SPONSORED_FPC_SALT } from '@aztec/constants';
 import { PasswordAccountContract } from './password-account-entrypoint';
-import { EmbeddedWallet } from '@aztec/wallets/embedded';
-import { AccountManager } from '@aztec/aztec.js/wallet';
+import { TestWallet } from '@aztec/test-wallet/server';
 
 async function getSponsoredPFCContract() {
   const instance = await getContractInstanceFromInstantiationParams(
@@ -46,7 +45,7 @@ console.log(constructorName, constructorArgs);
 const secretKey = Fr.random();
 // const salt = Fr.random();
 const { publicKeys } = await deriveKeys(secretKey);
-const wallet = await EmbeddedWallet.create(createAztecNodeClient('http://localhost:8080'), { ephemeral: true });
+const wallet = await TestWallet.create(createAztecNodeClient('http://localhost:8080'));
 
 // This doesn't work due to a strange bug in fee payment
 // const deployPasswordAccountMethod = new DeployAccountMethod(
@@ -80,5 +79,5 @@ const deployedAccountContract = await accountContractDeployMethod.send(deployAcc
 console.log('PasswordAccount contract deployed at:', deployedAccountContract.address);
 
 // Create and register an account using the deployed contract
-const accountManager = await AccountManager.create(wallet, Fr.random(), passwordAccountContract, Fr.random());
-console.log('Account registered at:', accountManager.address.toString());
+const account = await wallet.createAccount({ secret: Fr.random(), contract: passwordAccountContract, salt: Fr.random() });
+console.log('Account registered at:', account.address.toString());

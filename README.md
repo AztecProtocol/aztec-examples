@@ -16,7 +16,7 @@ You can find additional examples in the Aztec monorepo [docs examples folder](ht
 
 ### 1. [Recursive Verification](./recursive_verification)
 
-**Aztec Version**: 4.0.0-devnet.2-patch.1
+**Aztec Version**: 4.0.0-devnet.1-patch.0
 
 Demonstrates how to verify Noir circuit proofs within Aztec smart contracts using the UltraHonk proving system. This example showcases:
 
@@ -43,10 +43,32 @@ Demonstrates how to verify Noir circuit proofs within Aztec smart contracts usin
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific Aztec version (if needed)
-aztec-up 4.0.0-devnet.2-patch.1
+aztec-up 4.0.0-devnet.1-patch.0
 ```
 
 ## Development Workflow
+
+### Common Commands
+
+```bash
+# Compile Aztec contracts
+aztec-nargo compile
+
+# Start local Aztec network
+aztec start --local-network
+
+# Run tests with Testing Execution Environment (TXE)
+aztec test
+
+# Deploy contracts (using aztec-wallet)
+aztec-wallet deploy --no-init target/<contract>.json --from test0 --alias <alias>
+
+# Interact with contracts
+aztec-wallet send <function> --args <args> --contract-address <alias> -f test0
+
+# Profile gas/gates usage
+aztec-wallet profile <function> --args <args> --contract-address <alias> -f test0
+```
 
 ## Testing
 
