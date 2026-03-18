@@ -66,7 +66,7 @@ describe('Note Hash Computation Verification', () => {
     const NOTE_VALUE = 69n;
 
     // Create note
-    const receipt = await gettingStartedContract.methods
+    const { receipt } = await gettingStartedContract.methods
       .create_note_for_user(NOTE_VALUE)
       .send({ from: deployer });
 
@@ -121,7 +121,7 @@ describe('Note Hash Computation Verification', () => {
     const NOTE_VALUE = 42n;
 
     // Create note with different value
-    const receipt = await gettingStartedContract.methods
+    const { receipt } = await gettingStartedContract.methods
       .create_note_for_user(NOTE_VALUE)
       .send({ from: deployer });
 

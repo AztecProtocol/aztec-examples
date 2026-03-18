@@ -91,7 +91,7 @@ describe("Recursive Verification", () => {
     }
 
     // Call increment with proof data (vk_hash is read from storage)
-    const tx = await valueNotEqualContract.methods.increment(
+    const { receipt: tx } = await valueNotEqualContract.methods.increment(
       ownerAddress,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
@@ -106,7 +106,7 @@ describe("Recursive Verification", () => {
   }, TEST_TIMEOUT)
 
   test("should read incremented counter value", async () => {
-    const counterValue = await valueNotEqualContract.methods.get_counter(
+    const { result: counterValue } = await valueNotEqualContract.methods.get_counter(
       ownerAddress
     ).simulate({ from: ownerAddress })
 
@@ -123,7 +123,7 @@ describe("Recursive Verification", () => {
     }
 
     // Second increment to verify the contract works multiple times
-    const tx = await valueNotEqualContract.methods.increment(
+    const { receipt: tx } = await valueNotEqualContract.methods.increment(
       ownerAddress,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
@@ -134,7 +134,7 @@ describe("Recursive Verification", () => {
     expect(tx.executionResult).toBe(TxExecutionResult.SUCCESS)
 
     // Check counter value is now 12
-    const counterValue = await valueNotEqualContract.methods.get_counter(
+    const { result: counterValue } = await valueNotEqualContract.methods.get_counter(
       ownerAddress
     ).simulate({ from: ownerAddress })
 
@@ -180,7 +180,7 @@ describe("Recursive Verification", () => {
       data.publicInputs as unknown as FieldLike[],
     ).send(sendOpts)
     // Check user1's counter
-    const user1Counter = await user1Contract.methods.get_counter(
+    const { result: user1Counter } = await user1Contract.methods.get_counter(
       user1Address
     ).simulate({ from: user1Address })
 

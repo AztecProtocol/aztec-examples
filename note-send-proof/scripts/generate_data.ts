@@ -44,7 +44,7 @@ async function main() {
   const NOTE_VALUE = 69n;
 
   console.log('Creating note for user...');
-  const receipt = await gettingStarted.methods
+  const { receipt } = await gettingStarted.methods
     .create_note_for_user(NOTE_VALUE)
     .send({ from: deployerAddress });
   console.log('TX HASH', receipt.txHash.toString());

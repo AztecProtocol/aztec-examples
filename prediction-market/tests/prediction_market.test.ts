@@ -73,8 +73,8 @@ describe("Prediction Market Contract - Full Privacy", () => {
   }, TEST_TIMEOUT)
 
   test("should have initial 50/50 prices", async () => {
-    const yesPrice = await market.methods.get_price(true).simulate({ from: adminAddress })
-    const noPrice = await market.methods.get_price(false).simulate({ from: adminAddress })
+    const { result: yesPrice } = await market.methods.get_price(true).simulate({ from: adminAddress })
+    const { result: noPrice } = await market.methods.get_price(false).simulate({ from: adminAddress })
 
     expect(yesPrice).toBe(PRICE_PRECISION / 2n)
     expect(noPrice).toBe(PRICE_PRECISION / 2n)
@@ -87,13 +87,13 @@ describe("Prediction Market Contract - Full Privacy", () => {
     const depositAmount = 2000n
 
     // deposit() is now a PRIVATE function - creates private collateral notes
-    const tx = await market.methods.deposit(depositAmount)
+    const { receipt: tx } = await market.methods.deposit(depositAmount)
       .send({ from: aliceAddress })
 
     expect(tx.executionResult).toBe('success')
 
     // Collateral balance is now private (sums private notes)
-    const balance = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
+    const { result: balance } = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
     expect(balance).toBe(depositAmount)
 
     console.log(`Alice deposited ${depositAmount} PRIVATELY, balance: ${balance}`)
@@ -105,7 +105,7 @@ describe("Prediction Market Contract - Full Privacy", () => {
 
     // buy_outcome consumes private collateral, creates partial note for shares
     // The public function does NOT receive Alice's address - FULL PRIVACY!
-    const tx = await market.methods.buy_outcome(
+    const { receipt: tx } = await market.methods.buy_outcome(
       true, // is_yes
       buyAmount,
       minShares,
@@ -115,11 +115,11 @@ describe("Prediction Market Contract - Full Privacy", () => {
     console.log("Alice bought YES with FULL PRIVACY (public function doesn't know who)")
 
     // Check private collateral was deducted
-    const collateralBalance = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
+    const { result: collateralBalance } = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
     expect(collateralBalance).toBe(1500n) // 2000 - 500
 
     // Check private YES balance
-    const yesBalance = await market.methods.get_yes_balance(aliceAddress).simulate({ from: aliceAddress })
+    const { result: yesBalance } = await market.methods.get_yes_balance(aliceAddress).simulate({ from: aliceAddress })
     expect(yesBalance).toBeGreaterThanOrEqual(minShares)
 
     console.log(`Alice's private collateral: ${collateralBalance}`)
@@ -127,8 +127,8 @@ describe("Prediction Market Contract - Full Privacy", () => {
   }, TEST_TIMEOUT)
 
   test("YES price should have increased after alice's purchase", async () => {
-    const yesPrice = await market.methods.get_price(true).simulate({ from: adminAddress })
-    const noPrice = await market.methods.get_price(false).simulate({ from: adminAddress })
+    const { result: yesPrice } = await market.methods.get_price(true).simulate({ from: adminAddress })
+    const { result: noPrice } = await market.methods.get_price(false).simulate({ from: adminAddress })
 
     expect(yesPrice).toBeGreaterThan(PRICE_PRECISION / 2n)
     expect(noPrice).toBeLessThan(PRICE_PRECISION / 2n)
@@ -149,7 +149,7 @@ describe("Prediction Market Contract - Full Privacy", () => {
       .send({ from: bobAddress })
 
     // Bob buys NO with full privacy
-    const tx = await market.methods.buy_outcome(
+    const { receipt: tx } = await market.methods.buy_outcome(
       false, // is_yes = false (NO)
       buyAmount,
       0n, // no slippage protection for this test
@@ -158,17 +158,17 @@ describe("Prediction Market Contract - Full Privacy", () => {
     expect(tx.executionResult).toBe('success')
     console.log("Bob bought NO with FULL PRIVACY")
 
-    const noBalance = await market.methods.get_no_balance(bobAddress).simulate({ from: bobAddress })
+    const { result: noBalance } = await market.methods.get_no_balance(bobAddress).simulate({ from: bobAddress })
     expect(noBalance).toBeGreaterThan(0n)
 
     console.log(`Bob's private NO balance: ${noBalance}`)
   }, TEST_TIMEOUT)
 
   test("alice and bob should have separate private balances", async () => {
-    const aliceYes = await market.methods.get_yes_balance(aliceAddress).simulate({ from: aliceAddress })
-    const aliceNo = await market.methods.get_no_balance(aliceAddress).simulate({ from: aliceAddress })
-    const bobYes = await market.methods.get_yes_balance(bobAddress).simulate({ from: bobAddress })
-    const bobNo = await market.methods.get_no_balance(bobAddress).simulate({ from: bobAddress })
+    const { result: aliceYes } = await market.methods.get_yes_balance(aliceAddress).simulate({ from: aliceAddress })
+    const { result: aliceNo } = await market.methods.get_no_balance(aliceAddress).simulate({ from: aliceAddress })
+    const { result: bobYes } = await market.methods.get_yes_balance(bobAddress).simulate({ from: bobAddress })
+    const { result: bobNo } = await market.methods.get_no_balance(bobAddress).simulate({ from: bobAddress })
 
     expect(aliceYes).toBeGreaterThan(0n)
     expect(aliceNo).toBe(0n)
@@ -180,24 +180,24 @@ describe("Prediction Market Contract - Full Privacy", () => {
   }, TEST_TIMEOUT)
 
   test("alice should be able to withdraw remaining collateral PRIVATELY", async () => {
-    const balanceBefore = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
+    const { result: balanceBefore } = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
     const withdrawAmount = 500n
 
     // withdraw() is now a PRIVATE function
-    const tx = await market.methods.withdraw(withdrawAmount)
+    const { receipt: tx } = await market.methods.withdraw(withdrawAmount)
       .send({ from: aliceAddress })
 
     expect(tx.executionResult).toBe('success')
 
-    const balanceAfter = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
+    const { result: balanceAfter } = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress })
     expect(balanceAfter).toBe(balanceBefore - withdrawAmount)
 
     console.log(`Alice withdrew ${withdrawAmount} PRIVATELY, balance: ${balanceAfter}`)
   }, TEST_TIMEOUT)
 
   test("prices should always sum to ~100%", async () => {
-    const yesPrice = await market.methods.get_price(true).simulate({ from: adminAddress })
-    const noPrice = await market.methods.get_price(false).simulate({ from: adminAddress })
+    const { result: yesPrice } = await market.methods.get_price(true).simulate({ from: adminAddress })
+    const { result: noPrice } = await market.methods.get_price(false).simulate({ from: adminAddress })
     // Allow for small rounding error (integer division)
     const priceSum = yesPrice + noPrice
     expect(priceSum).toBeGreaterThanOrEqual(PRICE_PRECISION - 1n)

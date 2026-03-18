@@ -95,16 +95,16 @@ async function main() {
 
   await captureProfile(interaction, opts, "recursion");
 
-  let counterValue = await valueNotEqual.methods
+  let counterValue = (await valueNotEqual.methods
     .get_counter(accounts[0].item)
-    .simulate({ from: accounts[0].item });
+    .simulate({ from: accounts[0].item })).result;
   console.log(`Counter value: ${counterValue}`);
 
   await interaction.send(opts);
 
-  counterValue = await valueNotEqual.methods
+  counterValue = (await valueNotEqual.methods
     .get_counter(accounts[0].item)
-    .simulate({ from: accounts[0].item });
+    .simulate({ from: accounts[0].item })).result;
   console.log(`Counter value: ${counterValue}`);
 
   assert(counterValue === 11n);
