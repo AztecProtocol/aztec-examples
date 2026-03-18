@@ -27,7 +27,7 @@ const deployerAccount = await wallet.createSchnorrAccount(
 );
 const deployerAddress = deployerAccount.address;
 
-const gettingStarted = await GettingStartedContract.deploy(wallet, deployerAddress).send({
+const { contract: gettingStarted } = await GettingStartedContract.deploy(wallet, deployerAddress).send({
   from: deployerAddress,
 });
 
@@ -35,7 +35,7 @@ console.log('CONTRACT DEPLOYED AT', gettingStarted.address);
 
 const NOTE_VALUE = 69;
 
-const receipt = await gettingStarted.methods.create_note_for_user(NOTE_VALUE).send({ from: deployerAddress });
+const { receipt } = await gettingStarted.methods.create_note_for_user(NOTE_VALUE).send({ from: deployerAddress });
 
 console.log('TX HASH', receipt.txHash);
 

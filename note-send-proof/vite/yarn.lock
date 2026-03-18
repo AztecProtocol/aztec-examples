@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@aztec/bb.js@4.0.0-devnet.2-patch.1":
-  version "4.0.0-devnet.2-patch.1"
-  resolved "https://registry.yarnpkg.com/@aztec/bb.js/-/bb.js-4.0.0-devnet.2-patch.1.tgz#4caebd7590d2aaaba229a114c10e2b39f5259d55"
-  integrity sha512-SEOidi9kKFSE+DGA4w9h+PPJwXGXZ8VzG0xgrZgmx9cWFZMW7BW6k2kqkrmcd1n4YXrDYAztuLacw5oDvebuzg==
+"@aztec/bb.js@4.1.0-rc.2":
+  version "4.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@aztec/bb.js/-/bb.js-4.1.0-rc.2.tgz#7c6f887b14e5288dd32d26d4d3d963f5c4d1f894"
+  integrity sha512-+QpmBhbIFv8p0t13qyw+jzu2qxgXOVoqi+vBxdK0I45a5Q3TlT6zhXQFgIxs6HsU2rUu75oF92fn3KthdSOTCA==
   dependencies:
     comlink "^4.4.1"
     commander "^12.1.0"
@@ -14,32 +14,32 @@
     pako "^2.1.0"
     tslib "^2.4.0"
 
-"@aztec/noir-acvm_js@4.0.0-devnet.2-patch.1":
-  version "4.0.0-devnet.2-patch.1"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-acvm_js/-/noir-acvm_js-4.0.0-devnet.2-patch.1.tgz#3ac027dbdc465e1d5180bcb9d0004f0c58187e18"
-  integrity sha512-wXi4cqLN/5jENfJtHTg5MZSBoU1/OPbAXozWmpi6yP26rBmVQY7c4Fq0D7HwxoGgBoYfflweszM9ZEhKS8Srlg==
+"@aztec/noir-acvm_js@4.1.0-rc.2":
+  version "4.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-acvm_js/-/noir-acvm_js-4.1.0-rc.2.tgz#cea85f39cf678039e31c8126a4cc787f3fff9a96"
+  integrity sha512-y7ti2d/mlNVw2vv7dnaWJKDv3MaY8FETiHzxvUtS9MoQm5yuqILRYm90nZauYQG0VPuWutFaPGOCZapV/TC5OQ==
 
-"@aztec/noir-noir_js@4.0.0-devnet.2-patch.1":
-  version "4.0.0-devnet.2-patch.1"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-noir_js/-/noir-noir_js-4.0.0-devnet.2-patch.1.tgz#fb0f6deb887cb0e9a63dda1f76c2c2b70902ecd1"
-  integrity sha512-kZU7CFBE2tWgxywqCtpR7L1E298ZfqA0jXIeYSV7TYXjLl5q6FWa4EcITXQfZyhLoCCddJuYF9cH7dd6vPPRFw==
+"@aztec/noir-noir_js@4.1.0-rc.2":
+  version "4.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-noir_js/-/noir-noir_js-4.1.0-rc.2.tgz#086bec1656a3e12ea4460f0267683be1e32c609c"
+  integrity sha512-IMo6UYMhoR+HX7SaPdEihtKsAVcJvdSlyx/xwW+K7UjX6Gc/ywL7bb9sePWfsKeM63VWmUjgqMmSQVKPyu4Bkg==
   dependencies:
-    "@aztec/noir-acvm_js" "4.0.0-devnet.2-patch.1"
-    "@aztec/noir-noirc_abi" "4.0.0-devnet.2-patch.1"
-    "@aztec/noir-types" "4.0.0-devnet.2-patch.1"
+    "@aztec/noir-acvm_js" "4.1.0-rc.2"
+    "@aztec/noir-noirc_abi" "4.1.0-rc.2"
+    "@aztec/noir-types" "4.1.0-rc.2"
     pako "^2.1.0"
 
-"@aztec/noir-noirc_abi@4.0.0-devnet.2-patch.1":
-  version "4.0.0-devnet.2-patch.1"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-noirc_abi/-/noir-noirc_abi-4.0.0-devnet.2-patch.1.tgz#26fe7a639d0fe2d7c03828fc0e07db7bf7f9f338"
-  integrity sha512-9cxLL0BZi0Jw7VT8OK9qYbH7Z7tdz0TIfDHDfiFsXSmtABflAN7XMZ1DwJnwIqPDoTVTBTev99Y9Wh01zyBbWg==
+"@aztec/noir-noirc_abi@4.1.0-rc.2":
+  version "4.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-noirc_abi/-/noir-noirc_abi-4.1.0-rc.2.tgz#181d473e0f42848ffea6c3b7442b5e3f13a69dd0"
+  integrity sha512-Eit6kssa29yj56yQ2Q5BTRjSr0v/+7/FK6iR/hDWVDK5DEgetIm2j9Sk0d136NdZNQykKGDrUpeUIdAxcSoE8g==
   dependencies:
-    "@aztec/noir-types" "4.0.0-devnet.2-patch.1"
+    "@aztec/noir-types" "4.1.0-rc.2"
 
-"@aztec/noir-types@4.0.0-devnet.2-patch.1":
-  version "4.0.0-devnet.2-patch.1"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-types/-/noir-types-4.0.0-devnet.2-patch.1.tgz#080ee9514c85bd0b8698b3a5321646449b46ad22"
-  integrity sha512-W6bY7YyYXNYYOt/xbIfiZEh8k+pDraxmK1UiU67JO+UYMz4cEru7utJ0vhJ7zbBhvZxRNP9Y59TjfKy5vBYyag==
+"@aztec/noir-types@4.1.0-rc.2":
+  version "4.1.0-rc.2"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-types/-/noir-types-4.1.0-rc.2.tgz#c5eda33a61565a5e51585d25d904278a63e3aa91"
+  integrity sha512-Q5ue5v6v2Bp65fyqih4tLe2SPUrJJOLUnGliFJ/eIG98l8zHpQbZpZk8GOU3K7e8I3X1gxKkR4UL/2Wcv0HwFg==
 
 "@esbuild/aix-ppc64@0.25.12":
   version "0.25.12"

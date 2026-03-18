@@ -75,7 +75,7 @@ const { estimatedGas, stats } = await accountContractDeployMethod.simulate(deplo
 console.log(estimatedGas);
 console.log(stats);
 
-const deployedAccountContract = await accountContractDeployMethod.send(deployAccountOpts);
+const { contract: deployedAccountContract } = await accountContractDeployMethod.send(deployAccountOpts);
 
 console.log('PasswordAccount contract deployed at:', deployedAccountContract.address);
 

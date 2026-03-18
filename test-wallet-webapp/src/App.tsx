@@ -73,7 +73,7 @@ function App() {
     })
 
     try {
-      const deployedContract = await PrivateVotingContract.deploy(
+      const { contract: deployedContract } = await PrivateVotingContract.deploy(
         wallet,
         address,
       )
