@@ -53,8 +53,8 @@ describe('Note Hash Computation Verification', () => {
   }, TEST_TIMEOUT);
 
   test('should deploy GettingStarted contract', async () => {
-    gettingStartedContract = await GettingStartedContract.deploy(wallet, deployer)
-      .send({ from: deployer });
+    ({ contract: gettingStartedContract } = await GettingStartedContract.deploy(wallet, deployer)
+      .send({ from: deployer }));
 
     expect(gettingStartedContract.address).toBeDefined();
     expect(gettingStartedContract.address.toString()).not.toBe('');

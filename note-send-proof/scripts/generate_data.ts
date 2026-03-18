@@ -35,7 +35,7 @@ async function main() {
   const deployerAddress = deployerAccount.address;
 
   console.log('Deploying GettingStarted contract...');
-  const gettingStarted = await GettingStartedContract.deploy(wallet, deployerAddress).send({
+  const { contract: gettingStarted } = await GettingStartedContract.deploy(wallet, deployerAddress).send({
     from: deployerAddress,
   });
 

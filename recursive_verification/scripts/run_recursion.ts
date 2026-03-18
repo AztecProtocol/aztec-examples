@@ -70,7 +70,7 @@ async function main() {
     });
   const accounts = await testWallet.getAccounts();
 
-  const valueNotEqual = await ValueNotEqualContract.deploy(
+  const { contract: valueNotEqual } = await ValueNotEqualContract.deploy(
     testWallet,
     10,
     accounts[0].item,

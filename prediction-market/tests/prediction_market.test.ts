@@ -62,11 +62,11 @@ describe("Prediction Market Contract - Full Privacy", () => {
   }, TEST_TIMEOUT)
 
   test("should deploy prediction market contract", async () => {
-    market = await PredictionMarketContract.deploy(
+    ({ contract: market } = await PredictionMarketContract.deploy(
       wallet,
       adminAddress,
       INITIAL_LIQUIDITY
-    ).send({ from: adminAddress })
+    ).send({ from: adminAddress }))
 
     expect(market.address).toBeDefined()
     console.log("Contract deployed at address:", market.address.toString())

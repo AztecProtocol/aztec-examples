@@ -27,7 +27,7 @@ const deployerAccount = await wallet.createSchnorrAccount(
 );
 const deployerAddress = deployerAccount.address;
 
-const gettingStarted = await GettingStartedContract.deploy(wallet, deployerAddress).send({
+const { contract: gettingStarted } = await GettingStartedContract.deploy(wallet, deployerAddress).send({
   from: deployerAddress,
 });
 

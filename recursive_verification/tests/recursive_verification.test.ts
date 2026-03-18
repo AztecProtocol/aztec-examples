@@ -70,13 +70,13 @@ describe("Recursive Verification", () => {
       fee: { paymentMethod: sponsoredPaymentMethod },
     }
 
-    valueNotEqualContract = await ValueNotEqualContract.deploy(
+    ;({ contract: valueNotEqualContract } = await ValueNotEqualContract.deploy(
       testWallet,
       initialValue,
       ownerAddress,
       data.vkHash as unknown as FieldLike
     )
-      .send(sendOpts)
+      .send(sendOpts))
       
     expect(valueNotEqualContract.address).toBeDefined()
     expect(valueNotEqualContract.address.toString()).not.toBe("")
@@ -164,7 +164,7 @@ describe("Recursive Verification", () => {
     }
 
     // Deploy a new contract instance for user1
-    const user1Contract = await ValueNotEqualContract.deploy(
+    const { contract: user1Contract } = await ValueNotEqualContract.deploy(
       testWallet,
       initialValue,
       user1Address,
