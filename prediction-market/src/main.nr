@@ -81,16 +81,16 @@ pub contract PredictionMarket {
         } else {
             self.storage.no_balances.get_storage_slot()
         };
-        let partial_note = UintNote::partial(sender, storage_slot, self.context, sender, contract_address);
+        let partial_note = UintNote::partial(sender, self.context, sender, contract_address);
 
         // Enqueue public call - sender address is NOT passed, preserving identity privacy
-        self.enqueue_self._process_buy(is_yes, collateral_amount, min_shares_out, partial_note);
+        self.enqueue_self._process_buy(is_yes, collateral_amount, min_shares_out, partial_note, storage_slot);
     }
 
     /// Process buy in public context. Does not know who is buying.
     #[only_self]
     #[external("public")]
-    fn _process_buy(is_yes: bool, collateral_amount: u128, min_shares_out: u128, partial_note: PartialUintNote) {
+    fn _process_buy(is_yes: bool, collateral_amount: u128, min_shares_out: u128, partial_note: PartialUintNote, storage_slot: Field) {
         let yes_supply = self.storage.yes_supply.read();
         let no_supply = self.storage.no_supply.read();
         let liquidity = self.storage.total_liquidity.read();
@@ -110,7 +110,7 @@ pub contract PredictionMarket {
         }
         self.storage.total_liquidity.write(liquidity + collateral_amount);
 
-        partial_note.complete(self.context, self.context.this_address(), shares_out);
+        partial_note.complete(self.context, self.context.this_address(), storage_slot, shares_out);
     }
 
     /// Get current price for YES or NO (returns value with PRICE_PRECISION decimals).

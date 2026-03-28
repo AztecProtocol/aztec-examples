@@ -4,5 +4,5 @@ type = "contract"
 authors = ["Satyam Bansal"]
 
 [dependencies]
-aztec = { git = "https://github.com/AztecProtocol/aztec-nr/", tag = "v4.1.0-rc.2", directory = "aztec" }
-bb_proof_verification = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "v4.1.0-rc.2", directory = "barretenberg/noir/bb_proof_verification" }
+aztec = { git = "https://github.com/AztecProtocol/aztec-nr/", tag = "v4.2.0-aztecnr-rc.2", directory = "aztec" }
+bb_proof_verification = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "v4.2.0-aztecnr-rc.2", directory = "barretenberg/noir/bb_proof_verification" }
