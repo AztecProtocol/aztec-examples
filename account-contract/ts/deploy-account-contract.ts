@@ -1,4 +1,5 @@
 import { AztecAddress } from '@aztec/aztec.js/addresses';
+import { NO_FROM } from '@aztec/aztec.js/account';
 import { Fr } from '@aztec/aztec.js/fields';
 import { SponsoredFeePaymentMethod } from '@aztec/aztec.js/fee';
 import { Contract, DeployMethod, type DeployOptions } from '@aztec/aztec.js/contracts';
@@ -26,7 +27,7 @@ const deployAccountOpts: DeployOptions = {
   skipClassPublication: false,
   skipInstancePublication: false,
   skipInitialization: false,
-  from: AztecAddress.ZERO,
+  from: NO_FROM,
   fee: {
     paymentMethod: new SponsoredFeePaymentMethod(
       (await getSponsoredPFCContract()).address

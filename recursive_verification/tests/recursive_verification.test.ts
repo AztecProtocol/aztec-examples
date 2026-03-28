@@ -2,6 +2,7 @@ import { describe, expect, test, beforeAll, afterAll } from "vitest"
 import type { FieldLike } from "@aztec/aztec.js/abi"
 import { TxExecutionResult } from "@aztec/aztec.js/tx"
 import { AztecAddress } from "@aztec/aztec.js/addresses"
+import { NO_FROM } from "@aztec/aztec.js/account"
 import { Fr } from "@aztec/aztec.js/fields"
 import { createAztecNodeClient } from "@aztec/aztec.js/node"
 import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
@@ -46,7 +47,7 @@ describe("Recursive Verification", () => {
     const ownerDeployMethod = await ownerAccountManager.getDeployMethod()
     console.log('Deploying account (this may take a while for proof generation)...')
     await ownerDeployMethod.send({
-      from: AztecAddress.ZERO,
+      from: NO_FROM,
       fee: { paymentMethod: sponsoredPaymentMethod },
     })
     console.log('Account deployed!')
@@ -151,7 +152,7 @@ describe("Recursive Verification", () => {
     const user1DeployMethod = await user1AccountManager.getDeployMethod()
     await user1DeployMethod
       .send({
-        from: AztecAddress.ZERO,
+        from: NO_FROM,
         fee: { paymentMethod: sponsoredPaymentMethod },
       })
       

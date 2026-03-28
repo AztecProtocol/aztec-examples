@@ -7,6 +7,7 @@ import { ValueNotEqualContract } from "../contract/artifacts/ValueNotEqual";
 import data from "../data.json";
 import { EmbeddedWallet } from "@aztec/wallets/embedded";
 import { AztecAddress } from "@aztec/aztec.js/addresses";
+import { NO_FROM } from "@aztec/aztec.js/account";
 import { Fr } from "@aztec/aztec.js/fields";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -65,7 +66,7 @@ async function main() {
   const manager = await account.getDeployMethod();
   await manager
     .send({
-      from: AztecAddress.ZERO,
+      from: NO_FROM,
       fee: { paymentMethod: sponsoredPaymentMethod },
     });
   const accounts = await testWallet.getAccounts();

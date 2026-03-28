@@ -11,12 +11,12 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `4.1.0-rc.2`
+**Aztec Version**: `4.2.0-aztecnr-rc.2`
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v22 or higher) and [Yarn](https://yarnpkg.com/)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.1.0-rc.2)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.2.0-aztecnr-rc.2)
 - [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.18) - bundled with the Aztec CLI at `~/.aztec/current/bin/nargo`
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
@@ -62,7 +62,7 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 4.1.0-rc.2
+aztec-up 4.2.0-aztecnr-rc.2
 ```
 
 This ensures compatibility with the contract dependencies.
@@ -165,7 +165,7 @@ For a fresh setup, run these commands in order:
 yarn install
 
 # 2. Setup Aztec
-aztec-up 4.1.0-rc.2
+aztec-up 4.2.0-aztecnr-rc.2
 
 # 3. Verify nargo is available (bundled with Aztec CLI)
 ~/.aztec/current/bin/nargo --version

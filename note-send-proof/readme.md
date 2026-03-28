@@ -10,7 +10,7 @@ This project implements:
 - **Note Hash Computation**: Scripts demonstrating the v3 note hash formula
 - **Hash Verification**: Tests that verify computed unique note hashes match on-chain hashes
 
-**Aztec Version**: `4.1.0-rc.2`
+**Aztec Version**: `4.2.0-aztecnr-rc.2`
 
 ## Note Hash Computation Formula (v3)
 
@@ -35,7 +35,7 @@ The unique note hash is what gets stored on-chain in the note hash tree.
 To set the correct Aztec version:
 
 ```bash
-aztec-up 4.1.0-rc.2
+aztec-up 4.2.0-aztecnr-rc.2
 ```
 
 ## Project Structure
@@ -77,7 +77,7 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 4.1.0-rc.2
+aztec-up 4.2.0-aztecnr-rc.2
 ```
 
 ## Build & Compile
@@ -126,7 +126,7 @@ For a fresh setup, run these commands in order:
 yarn install
 
 # 2. Setup Aztec
-aztec-up 4.1.0-rc.2
+aztec-up 4.2.0-aztecnr-rc.2
 
 # 3. Compile contract and generate TypeScript bindings
 yarn ccc
