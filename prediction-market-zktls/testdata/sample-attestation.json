@@ -1,0 +1,35 @@
+{
+  "_comment": "Sample CoinGecko price attestation format. Generate a real one with: npx tsx scripts/generate_attestation.ts",
+  "recipient": "0x0000000000000000000000000000000000000000",
+  "request": {
+    "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+    "header": "",
+    "method": "GET",
+    "body": ""
+  },
+  "reponseResolve": [
+    {
+      "keyName": "price",
+      "parseType": "",
+      "parsePath": "$.bitcoin.usd"
+    },
+    {
+      "keyName": "price_confirm",
+      "parseType": "",
+      "parsePath": "$.bitcoin.usd"
+    }
+  ],
+  "data": "{\"price\":\"97234.56\",\"price_confirm\":\"97234.56\"}",
+  "attConditions": "[{\"op\":\"SHA256_EX\",\"field\":\"price\"},{\"op\":\"SHA256_EX\",\"field\":\"price_confirm\"}]",
+  "timestamp": 1775066673365,
+  "additionParams": "{\"algorithmType\":\"proxytls\"}",
+  "attestors": [
+    {
+      "attestorAddr": "0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6",
+      "url": "https://primuslabs.xyz"
+    }
+  ],
+  "signatures": [
+    "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ff"
+  ]
+}
