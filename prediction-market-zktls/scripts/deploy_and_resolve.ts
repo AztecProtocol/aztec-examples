@@ -1,22 +1,17 @@
 /**
  * deploy_and_resolve.ts
  *
- * End-to-end lifecycle demo:
+ * End-to-end lifecycle demo (complete-set model):
  *   1. Connect to local Aztec network and create wallets
- *   2. Compute Poseidon2 URL hashes for CoinGecko
- *   3. Deploy PredictionMarketZkTLS contract
- *   4. Alice deposits collateral and buys YES
- *   5. Bob deposits collateral and buys NO
- *   6. Resolve market with a zkTLS attestation
- *   7. Winner redeems shares for collateral
+ *   2. Deploy PredictionMarketZkTLS + Token contracts
+ *   3. Distribute tokens and mint complete sets
+ *   4. Resolve market with a zkTLS attestation
+ *   5. Winner redeems shares for collateral tokens
  *
  * Prerequisites:
  *   - Aztec local network running: `aztec start --local-network`
  *   - Contract compiled: `yarn ccc`
- *   - Attestation file at testdata/attestation.json (see generate_attestation.ts)
- *
- * Usage:
- *   yarn demo [attestation-file]
+ *   - Attestation file at testdata/attestation.json
  */
 
 import { createAztecNodeClient } from "@aztec/aztec.js/node";
@@ -26,9 +21,9 @@ import { EmbeddedWallet } from "@aztec/wallets/embedded";
 import { NO_FROM } from "@aztec/aztec.js/account";
 import { Fr } from "@aztec/aztec.js/fields";
 import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC";
-import assert from "node:assert";
 
 import { PredictionMarketZkTLSContract } from "../artifacts/PredictionMarketZkTLS.js";
+import { TokenContract } from "../artifacts/Token.js";
 import { getSponsoredFPCInstance } from "./sponsored_fpc.js";
 import {
   parseAttestationFile,
@@ -40,17 +35,17 @@ const NODE_URL = process.env.AZTEC_NODE_URL ?? "http://localhost:8080";
 const ATTESTATION_PATH = process.argv[2] ?? "testdata/attestation.json";
 
 // Market parameters
-const INITIAL_LIQUIDITY = 10000n;
-// Price threshold in cents: $100,000.00 = 10000000
-const PRICE_THRESHOLD = 10000000n;
-const THRESHOLD_ABOVE = true; // YES wins if BTC >= $100k
-// Expiry: 1 minute from now (short for demo purposes)
-const EXPIRY_OFFSET_MS = 60_000;
+const PRICE_THRESHOLD = 5000000n; // $50,000.00 in cents
+const THRESHOLD_ABOVE = true; // YES wins if BTC >= threshold
+const EXPIRY_OFFSET_MS = 60_000; // 1 minute for demo
+const TOKEN_MINT = 10000n;
+const SET_AMOUNT = 5000n;
 
 async function main() {
   console.log("=== Private Prediction Market with zkTLS Resolution ===\n");
+  console.log("Model: Complete sets (provably solvent)\n");
 
-  // 1. Setup wallet
+  // 1. Setup
   console.log(`Connecting to Aztec node at ${NODE_URL}...`);
   const aztecNode = await createAztecNodeClient(NODE_URL);
   const sponsoredFPC = await getSponsoredFPCInstance();
@@ -59,88 +54,61 @@ async function main() {
   const wallet = await EmbeddedWallet.create(aztecNode, { ephemeral: true });
   await wallet.registerContract(sponsoredFPC, SponsoredFPCContract.artifact);
 
-  // Create admin account
-  console.log("Creating admin account...");
-  const adminManager = await wallet.createSchnorrAccount(Fr.random(), Fr.random());
-  await (await adminManager.getDeployMethod()).send({
-    from: NO_FROM,
-    fee: { paymentMethod },
-  });
-
-  // Create Alice and Bob accounts
-  console.log("Creating Alice account...");
-  const aliceManager = await wallet.createSchnorrAccount(Fr.random(), Fr.random());
-  await (await aliceManager.getDeployMethod()).send({
-    from: NO_FROM,
-    fee: { paymentMethod },
-  });
-
-  console.log("Creating Bob account...");
-  const bobManager = await wallet.createSchnorrAccount(Fr.random(), Fr.random());
-  await (await bobManager.getDeployMethod()).send({
-    from: NO_FROM,
-    fee: { paymentMethod },
-  });
+  // Create accounts
+  console.log("Creating accounts...");
+  for (const name of ["Admin", "Alice", "Bob"]) {
+    const mgr = await wallet.createSchnorrAccount(Fr.random(), Fr.random());
+    await (await mgr.getDeployMethod()).send({ from: NO_FROM, fee: { paymentMethod } });
+    console.log(`  ${name} created`);
+  }
 
   const accounts = await wallet.getAccounts();
-  const adminAddress = accounts[0].item;
-  const aliceAddress = accounts[1].item;
-  const bobAddress = accounts[2].item;
-  console.log(`Admin: ${adminAddress}`);
-  console.log(`Alice: ${aliceAddress}`);
-  console.log(`Bob:   ${bobAddress}\n`);
+  const [adminAddr, aliceAddr, bobAddr] = accounts.map((a) => a.item);
+  console.log(`Admin: ${adminAddr}\nAlice: ${aliceAddr}\nBob:   ${bobAddr}\n`);
 
-  const sendOpts = (from: typeof adminAddress) => ({
-    from,
-    fee: { paymentMethod },
-  });
+  const sendAs = (from: typeof adminAddr) => ({ from, fee: { paymentMethod } });
 
-  // 2. Compute URL hashes
-  console.log("Computing Poseidon2 URL hashes for CoinGecko...");
+  // 2. Deploy contracts
+  console.log("Computing URL hashes...");
   const urlHashes = await computeAllowedUrlHashes(DEFAULT_ALLOWED_URLS);
 
-  // 3. Deploy contract
   const expiry = BigInt(Math.floor((Date.now() + EXPIRY_OFFSET_MS) / 1000));
   console.log(`Deploying market (threshold=$${Number(PRICE_THRESHOLD) / 100}, expiry=${expiry})...`);
 
   const { contract: market } = await PredictionMarketZkTLSContract.deploy(
-    wallet,
-    adminAddress,
-    INITIAL_LIQUIDITY,
-    expiry,
-    PRICE_THRESHOLD,
-    THRESHOLD_ABOVE,
+    wallet, adminAddr, expiry, PRICE_THRESHOLD, THRESHOLD_ABOVE,
     urlHashes as unknown as FieldLike[],
-  ).send(sendOpts(adminAddress));
+  ).send(sendAs(adminAddr));
+  console.log(`  Market: ${market.address}`);
 
-  console.log(`Market deployed: ${market.address}\n`);
+  const { contract: token } = await TokenContract.deploy(
+    wallet, "Prediction Collateral", "PCOL", 18,
+    TOKEN_MINT * 3n, adminAddr,
+  ).send(sendAs(adminAddr));
+  console.log(`  Token:  ${token.address}`);
 
-  // 4. Alice deposits and buys YES
-  console.log("Alice deposits 5000 collateral...");
-  await market.methods.deposit(5000n).send(sendOpts(aliceAddress));
+  await market.methods.set_token(token.address).send(sendAs(adminAddr));
+  console.log("  Linked market -> token");
 
-  console.log("Alice buys YES with 3000 collateral...");
-  await market.methods.buy_outcome(true, 3000n, 0n).send(sendOpts(aliceAddress));
+  // Distribute tokens
+  await token.methods.transfer_private_to_private(adminAddr, aliceAddr, TOKEN_MINT, 0).send(sendAs(adminAddr));
+  await token.methods.transfer_private_to_private(adminAddr, bobAddr, TOKEN_MINT, 0).send(sendAs(adminAddr));
+  console.log(`  Distributed ${TOKEN_MINT} tokens each\n`);
 
-  const aliceYes = await market.methods.get_yes_balance(aliceAddress).simulate({ from: aliceAddress });
-  console.log(`Alice YES balance: ${aliceYes}\n`);
+  // 3. Mint complete sets
+  for (const [name, addr] of [["Alice", aliceAddr], ["Bob", bobAddr]] as const) {
+    const nonce = Fr.random();
+    const action = token.methods.transfer_private_to_public(addr, market.address, SET_AMOUNT, nonce);
+    const witness = await wallet.createAuthWit(action, addr);
+    await wallet.addAuthWitness(witness);
+    await market.methods.mint_sets(SET_AMOUNT, nonce).send(sendAs(addr));
+    console.log(`${name} minted ${SET_AMOUNT} complete sets (YES + NO)`);
+  }
 
-  // 5. Bob deposits and buys NO
-  console.log("Bob deposits 5000 collateral...");
-  await market.methods.deposit(5000n).send(sendOpts(bobAddress));
+  const totalSets = await market.methods.get_total_sets().simulate({ from: adminAddr });
+  console.log(`Total sets outstanding: ${totalSets}\n`);
 
-  console.log("Bob buys NO with 3000 collateral...");
-  await market.methods.buy_outcome(false, 3000n, 0n).send(sendOpts(bobAddress));
-
-  const bobNo = await market.methods.get_no_balance(bobAddress).simulate({ from: bobAddress });
-  console.log(`Bob NO balance: ${bobNo}\n`);
-
-  // Show market state
-  const yesPrice = await market.methods.get_price(true).simulate({ from: adminAddress });
-  const noPrice = await market.methods.get_price(false).simulate({ from: adminAddress });
-  console.log(`Market prices: YES=${Number(yesPrice) / 1_000_000 * 100}%, NO=${Number(noPrice) / 1_000_000 * 100}%\n`);
-
-  // 6. Wait for expiry and resolve
+  // 4. Wait for expiry and resolve
   const now = Math.floor(Date.now() / 1000);
   const waitSec = Number(expiry) - now;
   if (waitSec > 0) {
@@ -162,26 +130,17 @@ async function main() {
       parsed.dataHashes as unknown as FieldLike[][],
       parsed.contents as unknown as FieldLike[][],
     )
-    .send(sendOpts(adminAddress));
+    .send(sendAs(adminAddr));
 
-  const outcomeIsYes = await market.methods.get_resolution_outcome().simulate({ from: adminAddress });
-  const resolvedPrice = await market.methods.get_resolution_price().simulate({ from: adminAddress });
-  console.log(`Market resolved! Outcome: ${outcomeIsYes ? "YES" : "NO"}, Price: $${Number(resolvedPrice) / 100}\n`);
+  const outcomeIsYes = await market.methods.get_resolution_outcome().simulate({ from: adminAddr });
+  const resolvedPrice = await market.methods.get_resolution_price().simulate({ from: adminAddr });
+  console.log(`Resolved! Outcome: ${outcomeIsYes ? "YES" : "NO"}, Price: $${Number(resolvedPrice) / 100}\n`);
 
-  // 7. Winner redeems
-  if (outcomeIsYes) {
-    console.log("Alice (YES holder) redeems shares...");
-    const yesBalance = await market.methods.get_yes_balance(aliceAddress).simulate({ from: aliceAddress });
-    await market.methods.redeem(yesBalance).send(sendOpts(aliceAddress));
-    const collateral = await market.methods.get_collateral_balance(aliceAddress).simulate({ from: aliceAddress });
-    console.log(`Alice collateral after redemption: ${collateral}`);
-  } else {
-    console.log("Bob (NO holder) redeems shares...");
-    const noBalance = await market.methods.get_no_balance(bobAddress).simulate({ from: bobAddress });
-    await market.methods.redeem(noBalance).send(sendOpts(bobAddress));
-    const collateral = await market.methods.get_collateral_balance(bobAddress).simulate({ from: bobAddress });
-    console.log(`Bob collateral after redemption: ${collateral}`);
-  }
+  // 5. Winner redeems
+  console.log("Alice redeems winning shares...");
+  await market.methods.redeem(SET_AMOUNT).send(sendAs(aliceAddr));
+  const aliceTokens = await token.methods.balance_of_private(aliceAddr).simulate({ from: aliceAddr });
+  console.log(`Alice token balance after redemption: ${aliceTokens}`);
 
   console.log("\n=== Prediction market lifecycle complete! ===");
 }

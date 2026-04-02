@@ -1,62 +1,55 @@
 # Private Prediction Market with zkTLS Resolution
 
-A private prediction market on Aztec where bets are hidden, resolution is trustless via zkTLS, and settlement is private.
+A private prediction market on Aztec with real token collateral, provable solvency via complete sets, and trustless resolution via zkTLS.
 
 ## What This Does
 
-- **Private betting**: No one sees who bet what, how much, or which direction
-- **Trustless resolution**: Market resolves via a Primus zkTLS attestation proving a real-world price from CoinGecko's API — no oracle network needed
-- **Private settlement**: Winners redeem shares for collateral without revealing their identity
+- **Private positions**: No one sees who holds YES or NO shares
+- **Real collateral**: Backed by actual Aztec token transfers (not phantom balances)
+- **Provably solvent**: Complete-set model guarantees total collateral >= total winning shares
+- **Trustless resolution**: Primus zkTLS attestation from CoinGecko's price API
+- **Private settlement**: Winners redeem shares for collateral tokens
+
+## Complete-Set Model
+
+Unlike AMM-based prediction markets that can become insolvent, this contract uses **complete sets**:
+
+```
+mint_sets(1000):  deposit 1000 collateral -> get 1000 YES + 1000 NO shares
+burn_sets(1000):  return 1000 YES + 1000 NO -> get 1000 collateral back
+redeem(1000):     after resolution, burn 1000 winning shares -> get 1000 collateral
+```
+
+**Solvency proof**: Every collateral token backs exactly 1 YES + 1 NO share. After resolution, only winning shares redeem. Since `winning_shares <= total_shares = total_collateral`, the contract is always solvent.
+
+Users trade YES and NO shares peer-to-peer. The market price emerges from what traders are willing to pay for each side.
 
 ## How It Works
 
-### Market Lifecycle
-
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  1. DEPLOY                                                       │
-│     Admin creates market: "BTC above $100k by July 1?"          │
-│     Sets: threshold, expiry, CoinGecko URL hash                 │
-├─────────────────────────────────────────────────────────────────┤
-│  2. BETTING (private)                                            │
-│     Alice deposits collateral → buys YES shares                 │
-│     Bob deposits collateral → buys NO shares                    │
-│     ⚡ Identity hidden via partial notes                         │
-│     📈 CSMM pricing adjusts based on demand                     │
-├─────────────────────────────────────────────────────────────────┤
-│  3. RESOLUTION (after expiry)                                    │
-│     Anyone submits CoinGecko zkTLS attestation                  │
-│     Contract verifies: signature ✓ URL ✓ price extraction ✓    │
-│     Compares price against threshold → YES or NO wins           │
-├─────────────────────────────────────────────────────────────────┤
-│  4. SETTLEMENT (private)                                         │
-│     Winners call redeem() → shares burned, collateral returned  │
-│     All via private notes — no one knows who won                │
-└─────────────────────────────────────────────────────────────────┘
+1. DEPLOY
+   Admin creates market: "BTC above $50k by July 1?"
+   Sets: threshold, expiry, CoinGecko URL hash, collateral token
+
+2. MINT SETS (private)
+   Users deposit collateral tokens -> receive equal YES + NO shares
+   Auth witness authorizes the token transfer
+
+3. TRADE (off-chain / peer-to-peer)
+   Users trade YES/NO shares to express their view
+   Can also burn_sets() to exit entirely (return YES+NO for collateral)
+
+4. RESOLUTION (after expiry, within 7-day window)
+   Anyone submits CoinGecko zkTLS attestation
+   Private: ECDSA verification + price parsing
+   Public: expiry check + resolution window + state update
+
+5. SETTLEMENT (private)
+   Winners: redeem(amount) -> burn shares, receive collateral tokens
+   Losers: shares are worthless (or burn complete sets if holding both)
 ```
-
-### Privacy Model
-
-| Data | Privacy | Notes |
-|------|---------|-------|
-| Bettor identity | **PRIVATE** | Hidden via partial notes |
-| Position size | **PRIVATE** | Stored as encrypted notes |
-| Bet direction | **PRIVATE** | Not revealed until settlement |
-| Collateral balances | **PRIVATE** | Only owner can read |
-| Trade amounts | PUBLIC | Affects price movement |
-| Resolution outcome | PUBLIC | Everyone needs to know who won |
-| Resolved price | PUBLIC | Proven via zkTLS attestation |
-
-### Why This Is Better Than Polymarket
-
-- **Position privacy** — no one front-runs or copies your bets
-- **Censorship resistance** — no central operator to shut down markets
-- **Trustless resolution** — zkTLS attestation from CoinGecko vs relying on oracle networks
-- **Simple trust assumption** — attestor only proves "this data came from this URL"
 
 ## Quick Start
-
-### Prerequisites
 
 ```bash
 # Install Aztec tools
@@ -65,47 +58,23 @@ aztec-up 4.2.0-aztecnr-rc.2
 
 # Install dependencies
 yarn install
-```
 
-### Build
-
-```bash
-# Compile contract and generate TypeScript bindings
+# Compile contract + generate TypeScript bindings
 yarn ccc
-```
 
-### Run Noir Unit Tests
-
-```bash
-# Tests CSMM pricing and price parser
+# Run Noir unit tests
 yarn test:noir
-```
 
-### Generate a Price Attestation
-
-```bash
-# Needs PRIMUS_APP_ID and PRIMUS_APP_SECRET in .env
-# Get credentials from https://dev.primuslabs.xyz
+# Generate price attestation (needs PRIMUS credentials in .env)
 yarn generate
-```
 
-### Run Full Lifecycle Demo
-
-```bash
-# Start Aztec local network (in separate terminal)
+# Start Aztec local network (separate terminal)
 aztec start --local-network
 
-# Deploy, bet, resolve, redeem
+# Run full lifecycle demo
 yarn demo
-```
 
-### Run Integration Tests
-
-```bash
-# Start Aztec local network first
-aztec start --local-network
-
-# Run tests
+# Run integration tests
 yarn test
 ```
 
@@ -114,65 +83,53 @@ yarn test
 ### Contract (`src/main.nr`)
 
 **Storage:**
-- `collateral_balances`, `yes_balances`, `no_balances` — private (note-based)
-- `yes_supply`, `no_supply`, `total_liquidity`, `admin` — public (AMM state)
-- `config: PublicImmutable<MarketConfig>` — market parameters (readable from private)
-- `resolution: PublicImmutable<Resolution>` — outcome (initialized once at resolution)
+- `yes_balances`, `no_balances` -- private share notes (Owned<BalanceSet>)
+- `token` -- collateral token address (PublicImmutable)
+- `total_sets` -- total complete sets outstanding (PublicMutable)
+- `expiry`, `price_threshold`, `threshold_above`, `allowed_url_hashes` -- market config (PublicImmutable)
+- `resolution_outcome`, `resolution_price` -- result (PublicImmutable, initialized once)
 
 **Key Functions:**
-- `deposit(amount)` / `withdraw(amount)` — private collateral management
-- `buy_outcome(is_yes, amount, min_shares)` — private bet via partial notes
-- `resolve_market(…attestation…)` — public zkTLS verification + outcome determination
-- `redeem(amount)` — private settlement (burn winning shares → receive collateral)
+| Function | Context | Purpose |
+|----------|---------|---------|
+| `mint_sets(amount, nonce)` | private | Deposit collateral, get YES+NO shares |
+| `burn_sets(amount)` | private | Return YES+NO shares, get collateral back |
+| `redeem(amount)` | private | After resolution, burn winning shares for collateral |
+| `resolve_market(...)` | private->public | Verify zkTLS attestation, set outcome |
+| `set_token(addr)` | public | One-time token link (admin only) |
 
-### Pricing: Constant Sum Market Maker (CSMM)
+### Token Integration
 
-```
-price_YES = yes_supply / (yes_supply + no_supply)
-price_NO = no_supply / (yes_supply + no_supply)
-price_YES + price_NO = 1  (always)
+Uses [defi-wonderland/aztec-standards](https://github.com/defi-wonderland/aztec-standards) Token contract at `v4.2.0-aztecnr-rc.2`.
 
-shares_out = collateral_in / current_price
-```
+- **Deposit**: `Token.transfer_private_to_public(user, market, amount, nonce)` with auth witness
+- **Withdrawal**: `Token.transfer_public_to_private(market, user, amount, 0)` -- no auth needed
 
 ### zkTLS Resolution
 
-Uses [Primus zkTLS](https://primuslabs.xyz) attestations verified by [`att_verifier_lib`](https://github.com/primus-labs/zktls-verification-noir):
-
-1. After market expiry, anyone fetches BTC price from CoinGecko via Primus
-2. Primus attestor signs: "CoinGecko returned this price at this URL"
-3. Contract verifies ECDSA signature, SHA256 content hashes, URL whitelist
-4. Parses ASCII price → integer cents, compares against threshold
-5. `PublicImmutable<Resolution>` initialized once (prevents double-resolution)
-
-### CoinGecko API
-
-```
-URL: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
-Response: {"bitcoin":{"usd":97234.56}}
-JSONPath: $.bitcoin.usd → "97234.56"
-Parsed: 9723456 (cents)
-```
+After market expiry (within 7-day resolution window):
+1. Anyone fetches BTC price from CoinGecko via Primus zkTLS
+2. `resolve_market` verifies ECDSA signature + SHA256 content hashes (private circuit)
+3. `_set_resolution` checks expiry window and sets outcome (public, `PublicImmutable::initialize` prevents double-resolution)
 
 ## Project Structure
 
 ```
 prediction-market-zktls/
-├── src/
-│   ├── main.nr          # Contract: betting, resolution, settlement
-│   ├── config.nr         # MarketConfig + Resolution structs
-│   ├── lib.nr            # CSMM pricing functions + unit tests
-│   └── price.nr          # ASCII price parser + unit tests
-├── scripts/
-│   ├── parse_attestation.ts     # Attestation → contract args
-│   ├── compute_url_hashes.ts    # Poseidon2 URL hashing
-│   ├── generate_attestation.ts  # CoinGecko attestation generator
-│   ├── deploy_and_resolve.ts    # Full lifecycle demo
-│   └── sponsored_fpc.ts         # Fee payment helper
-├── tests/
-│   └── prediction_market_zktls.test.ts  # Integration tests
-├── testdata/
-│   └── sample-attestation.json  # Example format
-├── Nargo.toml            # Noir/Aztec dependencies
-└── package.json          # TypeScript dependencies
+|-- src/
+|   |-- main.nr          # Contract: complete sets, token integration, resolution
+|   |-- config.nr         # Constants
+|   +-- price.nr          # ASCII price parser + unit tests
+|-- scripts/
+|   |-- parse_attestation.ts     # Attestation -> contract args
+|   |-- compute_url_hashes.ts    # Poseidon2 URL hashing
+|   |-- generate_attestation.ts  # CoinGecko attestation generator
+|   |-- deploy_and_resolve.ts    # Full lifecycle demo
+|   +-- sponsored_fpc.ts         # Fee payment helper
+|-- tests/
+|   +-- prediction_market_zktls.test.ts
+|-- testdata/
+|   +-- sample-attestation.json
+|-- Nargo.toml
++-- package.json
 ```

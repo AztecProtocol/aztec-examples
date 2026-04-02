@@ -1,13 +1,13 @@
 /**
  * Integration tests for the PredictionMarketZkTLS contract.
  *
- * Tests cover:
- * - Market deployment and configuration
- * - Private betting (deposit, buy YES/NO)
- * - Price mechanics (CSMM pricing)
+ * Tests the complete-set model with real token collateral:
+ * - Contract deployment and token linking
+ * - mint_sets: deposit collateral, receive YES + NO shares
+ * - burn_sets: return YES + NO shares, receive collateral
  * - zkTLS resolution (requires testdata/attestation.json)
- * - Private settlement (redeem winning shares)
- * - Guard rails (double resolution, betting after resolve, etc.)
+ * - redeem: burn winning shares, receive collateral
+ * - Guard rails (double resolution, burn after resolve, etc.)
  */
 
 import { describe, expect, test, beforeAll, afterAll } from "vitest";
@@ -23,6 +23,7 @@ import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC";
 import fs from "fs";
 
 import { PredictionMarketZkTLSContract } from "../artifacts/PredictionMarketZkTLS.js";
+import { TokenContract } from "../artifacts/Token.js";
 import { getSponsoredFPCInstance } from "../scripts/sponsored_fpc.js";
 import {
   parseAttestationFile,
@@ -34,26 +35,25 @@ const NODE_URL = "http://localhost:8080";
 const TEST_TIMEOUT = 600_000;
 const ATTESTATION_PATH = "testdata/attestation.json";
 
-const INITIAL_LIQUIDITY = 10000n;
-const PRICE_PRECISION = 1_000_000n;
-// Threshold: $50,000.00 = 5000000 cents
+// Threshold: $50,000.00 = 5000000 cents (BTC is well above this)
 const PRICE_THRESHOLD = 5000000n;
 const THRESHOLD_ABOVE = true; // YES wins if price >= threshold
+const MINT_AMOUNT = 10000n; // tokens minted to each user
+const SET_AMOUNT = 3000n; // complete sets to mint
 
 function hasAttestation(): boolean {
   return fs.existsSync(ATTESTATION_PATH);
 }
 
-describe("PredictionMarketZkTLS", () => {
+describe("PredictionMarketZkTLS - Complete Set Model", () => {
   let wallet: EmbeddedWallet;
   let adminAddress: AztecAddress;
   let aliceAddress: AztecAddress;
   let bobAddress: AztecAddress;
   let market: PredictionMarketZkTLSContract;
+  let token: TokenContract;
   let paymentMethod: SponsoredFeePaymentMethod;
   let urlHashes: string[];
-
-  // Expiry set in beforeAll after accounts are created (needs enough time for betting)
   let expiry: bigint;
 
   beforeAll(async () => {
@@ -84,11 +84,9 @@ describe("PredictionMarketZkTLS", () => {
     console.log(`Alice: ${aliceAddress}`);
     console.log(`Bob:   ${bobAddress}`);
 
-    // Compute URL hashes
     urlHashes = await computeAllowedUrlHashes(DEFAULT_ALLOWED_URLS);
 
-    // Set expiry AFTER account creation so we have enough time for betting
-    // 5 minutes from now — enough for several tx before expiry
+    // Set expiry 5 minutes from now
     expiry = BigInt(Math.floor(Date.now() / 1000) + 300);
   }, TEST_TIMEOUT);
 
@@ -99,14 +97,14 @@ describe("PredictionMarketZkTLS", () => {
   // ===== DEPLOYMENT =====
 
   test(
-    "should deploy prediction market with config",
+    "should deploy market and token contracts",
     async () => {
       const sendOpts = { from: adminAddress, fee: { paymentMethod } };
 
+      // Deploy prediction market
       ({ contract: market } = await PredictionMarketZkTLSContract.deploy(
         wallet,
         adminAddress,
-        INITIAL_LIQUIDITY,
         expiry,
         PRICE_THRESHOLD,
         THRESHOLD_ABOVE,
@@ -114,212 +112,175 @@ describe("PredictionMarketZkTLS", () => {
       ).send(sendOpts));
 
       expect(market.address).toBeDefined();
-      console.log(`Market deployed: ${market.address}`);
+      console.log(`Market: ${market.address}`);
+
+      // Deploy Token with initial supply to admin
+      ({ contract: token } = await TokenContract.deploy(
+        wallet,
+        "Prediction Collateral",
+        "PCOL",
+        18,
+        MINT_AMOUNT * 3n,
+        adminAddress,
+      ).send(sendOpts));
+
+      expect(token.address).toBeDefined();
+      console.log(`Token: ${token.address}`);
+
+      // Link market -> token
+      await market.methods.set_token(token.address).send(sendOpts);
+      console.log("Linked market -> token");
+
+      // Distribute tokens to Alice and Bob
+      await token.methods
+        .transfer_private_to_private(adminAddress, aliceAddress, MINT_AMOUNT, 0)
+        .send(sendOpts);
+      await token.methods
+        .transfer_private_to_private(adminAddress, bobAddress, MINT_AMOUNT, 0)
+        .send(sendOpts);
+      console.log(`Distributed ${MINT_AMOUNT} tokens each to Alice and Bob`);
     },
     TEST_TIMEOUT,
   );
 
   test(
-    "should have initial 50/50 prices",
+    "should reject set_token called twice",
     async () => {
-      const { result: yesPrice } = await market.methods
-        .get_price(true)
-        .simulate({ from: adminAddress });
-      const { result: noPrice } = await market.methods
-        .get_price(false)
-        .simulate({ from: adminAddress });
+      const sendOpts = { from: adminAddress, fee: { paymentMethod } };
+      await expect(
+        market.methods.set_token(token.address).send(sendOpts),
+      ).rejects.toThrow();
+      console.log("Double set_token correctly rejected");
+    },
+    TEST_TIMEOUT,
+  );
 
-      expect(yesPrice).toBe(PRICE_PRECISION / 2n);
-      expect(noPrice).toBe(PRICE_PRECISION / 2n);
+  // ===== COMPLETE SET OPERATIONS =====
 
-      console.log(
-        `YES: ${(Number(yesPrice) / 1e6) * 100}%, NO: ${(Number(noPrice) / 1e6) * 100}%`,
+  test(
+    "alice mints complete sets (deposits collateral, gets YES + NO)",
+    async () => {
+      const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
+
+      // Create auth witness for the token transfer
+      const nonce = Fr.random();
+      const action = token.methods.transfer_private_to_public(
+        aliceAddress,
+        market.address,
+        SET_AMOUNT,
+        nonce,
       );
-    },
-    TEST_TIMEOUT,
-  );
+      const witness = await wallet.createAuthWit(action, aliceAddress);
+      await wallet.addAuthWitness(witness);
 
-  test(
-    "should report market is not resolved",
-    async () => {
-      const { result: resolved } = await market.methods
-        .is_resolved()
+      // Mint complete sets
+      const { receipt } = await market.methods
+        .mint_sets(SET_AMOUNT, nonce)
+        .send(sendOpts);
+      expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
+
+      // Check YES and NO balances
+      const { result: yesBalance } = await market.methods
+        .get_yes_balance(aliceAddress)
+        .simulate({ from: aliceAddress });
+      const { result: noBalance } = await market.methods
+        .get_no_balance(aliceAddress)
+        .simulate({ from: aliceAddress });
+
+      expect(yesBalance).toBe(SET_AMOUNT);
+      expect(noBalance).toBe(SET_AMOUNT);
+
+      // Check total sets
+      const { result: totalSets } = await market.methods
+        .get_total_sets()
         .simulate({ from: adminAddress });
-      expect(resolved).toBe(false);
-    },
-    TEST_TIMEOUT,
-  );
+      expect(totalSets).toBe(SET_AMOUNT);
 
-  // ===== PRIVATE BETTING =====
-
-  test(
-    "alice deposits collateral privately",
-    async () => {
-      const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
-
-      const { receipt } = await market.methods
-        .deposit(5000n)
-        .send(sendOpts);
-      expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
-
-      const { result: balance } = await market.methods
-        .get_collateral_balance(aliceAddress)
-        .simulate({ from: aliceAddress });
-      expect(balance).toBe(5000n);
-      console.log(`Alice collateral: ${balance}`);
+      console.log(`Alice minted ${SET_AMOUNT} sets. YES=${yesBalance}, NO=${noBalance}`);
     },
     TEST_TIMEOUT,
   );
 
   test(
-    "alice buys YES shares privately",
+    "bob mints complete sets",
     async () => {
-      const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
+      const sendOpts = { from: bobAddress, fee: { paymentMethod } };
+
+      const nonce = Fr.random();
+      const action = token.methods.transfer_private_to_public(
+        bobAddress,
+        market.address,
+        SET_AMOUNT,
+        nonce,
+      );
+      const witness = await wallet.createAuthWit(action, bobAddress);
+      await wallet.addAuthWitness(witness);
 
       const { receipt } = await market.methods
-        .buy_outcome(true, 2000n, 0n)
+        .mint_sets(SET_AMOUNT, nonce)
         .send(sendOpts);
       expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
 
-      const { result: collateral } = await market.methods
-        .get_collateral_balance(aliceAddress)
-        .simulate({ from: aliceAddress });
-      expect(collateral).toBe(3000n); // 5000 - 2000
+      const { result: totalSets } = await market.methods
+        .get_total_sets()
+        .simulate({ from: adminAddress });
+      expect(totalSets).toBe(SET_AMOUNT * 2n);
+
+      console.log(`Bob minted ${SET_AMOUNT} sets. Total: ${totalSets}`);
+    },
+    TEST_TIMEOUT,
+  );
+
+  test(
+    "alice burns some complete sets (returns collateral)",
+    async () => {
+      const burnAmount = 1000n;
+      const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
+
+      const { receipt } = await market.methods
+        .burn_sets(burnAmount)
+        .send(sendOpts);
+      expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
 
       const { result: yesBalance } = await market.methods
         .get_yes_balance(aliceAddress)
         .simulate({ from: aliceAddress });
-      expect(yesBalance).toBeGreaterThan(0n);
-
-      console.log(`Alice: collateral=${collateral}, YES=${yesBalance}`);
-    },
-    TEST_TIMEOUT,
-  );
-
-  test(
-    "bob deposits and buys NO shares privately",
-    async () => {
-      const sendOpts = { from: bobAddress, fee: { paymentMethod } };
-
-      await market.methods.deposit(5000n).send(sendOpts);
-      const { receipt } = await market.methods
-        .buy_outcome(false, 2000n, 0n)
-        .send(sendOpts);
-      expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
+      expect(yesBalance).toBe(SET_AMOUNT - burnAmount);
 
       const { result: noBalance } = await market.methods
-        .get_no_balance(bobAddress)
-        .simulate({ from: bobAddress });
-      expect(noBalance).toBeGreaterThan(0n);
-
-      console.log(`Bob NO balance: ${noBalance}`);
-    },
-    TEST_TIMEOUT,
-  );
-
-  test(
-    "YES price increases after alice's purchase",
-    async () => {
-      const { result: yesPrice } = await market.methods
-        .get_price(true)
-        .simulate({ from: adminAddress });
-      const { result: noPrice } = await market.methods
-        .get_price(false)
-        .simulate({ from: adminAddress });
-
-      expect(yesPrice).toBeGreaterThan(PRICE_PRECISION / 2n);
-      expect(noPrice).toBeLessThan(PRICE_PRECISION / 2n);
-
-      // Prices should sum to ~1.0 (allow rounding)
-      const sum = yesPrice + noPrice;
-      expect(sum).toBeGreaterThanOrEqual(PRICE_PRECISION - 1n);
-      expect(sum).toBeLessThanOrEqual(PRICE_PRECISION);
-
-      console.log(
-        `After trades: YES=${(Number(yesPrice) / 1e6) * 100}%, NO=${(Number(noPrice) / 1e6) * 100}%`,
-      );
-    },
-    TEST_TIMEOUT,
-  );
-
-  test(
-    "alice and bob have separate private balances",
-    async () => {
-      const { result: aliceYes } = await market.methods
-        .get_yes_balance(aliceAddress)
-        .simulate({ from: aliceAddress });
-      const { result: aliceNo } = await market.methods
         .get_no_balance(aliceAddress)
         .simulate({ from: aliceAddress });
-      const { result: bobYes } = await market.methods
-        .get_yes_balance(bobAddress)
-        .simulate({ from: bobAddress });
-      const { result: bobNo } = await market.methods
-        .get_no_balance(bobAddress)
-        .simulate({ from: bobAddress });
+      expect(noBalance).toBe(SET_AMOUNT - burnAmount);
 
-      expect(aliceYes).toBeGreaterThan(0n);
-      expect(aliceNo).toBe(0n);
-      expect(bobYes).toBe(0n);
-      expect(bobNo).toBeGreaterThan(0n);
-
-      console.log(`Alice: YES=${aliceYes}, NO=${aliceNo}`);
-      console.log(`Bob:   YES=${bobYes}, NO=${bobNo}`);
+      console.log(`Alice burned ${burnAmount} sets. YES=${yesBalance}, NO=${noBalance}`);
     },
     TEST_TIMEOUT,
   );
 
-  // ===== COLLATERAL MANAGEMENT =====
-
-  test(
-    "alice can withdraw remaining collateral",
-    async () => {
-      const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
-
-      const { receipt } = await market.methods
-        .withdraw(1000n)
-        .send(sendOpts);
-      expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
-
-      const { result: balance } = await market.methods
-        .get_collateral_balance(aliceAddress)
-        .simulate({ from: aliceAddress });
-      expect(balance).toBe(2000n); // 3000 - 1000
-
-      console.log(`Alice collateral after withdraw: ${balance}`);
-    },
-    TEST_TIMEOUT,
-  );
-
-  // ===== REDEMPTION BEFORE RESOLUTION (should fail) =====
+  // ===== PRE-RESOLUTION GUARDS =====
 
   test(
     "should reject redemption before resolution",
     async () => {
       const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
-
-      // redeem reads PublicImmutable<Resolution> which is uninitialized
       await expect(
         market.methods.redeem(100n).send(sendOpts),
       ).rejects.toThrow();
-
       console.log("Pre-resolution redemption correctly rejected");
     },
     TEST_TIMEOUT,
   );
 
   // ===== zkTLS RESOLUTION =====
-  // These tests require testdata/attestation.json from generate_attestation.ts
 
   test(
     "should resolve market with valid zkTLS attestation",
     async () => {
       if (!hasAttestation()) {
-        console.log("Skipping: no attestation file. Run generate_attestation.ts first.");
+        console.log("Skipping: no attestation file.");
         return;
       }
 
-      // Wait for market to expire (if not already past)
       const nowSec = Math.floor(Date.now() / 1000);
       const waitSec = Number(expiry) - nowSec;
       if (waitSec > 0) {
@@ -374,7 +335,6 @@ describe("PredictionMarketZkTLS", () => {
       const parsed = parseAttestationFile(ATTESTATION_PATH, DEFAULT_ALLOWED_URLS);
       const sendOpts = { from: adminAddress, fee: { paymentMethod } };
 
-      // PublicImmutable::initialize fails on second call
       await expect(
         market.methods
           .resolve_market(
@@ -395,123 +355,74 @@ describe("PredictionMarketZkTLS", () => {
     TEST_TIMEOUT,
   );
 
+  // ===== SETTLEMENT =====
+
   test(
-    "should block betting after resolution",
+    "winner redeems shares for collateral tokens",
     async () => {
       if (!hasAttestation()) {
         console.log("Skipping: no attestation file.");
         return;
       }
 
+      const { result: outcomeIsYes } = await market.methods
+        .get_resolution_outcome()
+        .simulate({ from: adminAddress });
+
+      // Alice has SET_AMOUNT - 1000 of each (burned 1000 complete sets)
+      const aliceWinningShares = SET_AMOUNT - 1000n;
       const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
 
-      // buy_outcome's _process_buy checks resolution.is_initialized()
-      await expect(
-        market.methods.buy_outcome(true, 100n, 0n).send(sendOpts),
-      ).rejects.toThrow();
+      const { receipt } = await market.methods
+        .redeem(aliceWinningShares)
+        .send(sendOpts);
+      expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
 
-      console.log("Post-resolution betting correctly blocked");
+      // Winning shares should be 0
+      const balanceMethod = outcomeIsYes
+        ? market.methods.get_yes_balance
+        : market.methods.get_no_balance;
+      const { result: sharesAfter } = await balanceMethod(aliceAddress)
+        .simulate({ from: aliceAddress });
+      expect(sharesAfter).toBe(0n);
+
+      // Check Alice got collateral tokens back (private balance)
+      const { result: tokenBalance } = await token.methods
+        .balance_of_private(aliceAddress)
+        .simulate({ from: aliceAddress });
+      expect(tokenBalance).toBeGreaterThan(0n);
+
+      console.log(`Alice redeemed ${aliceWinningShares} winning shares. Token balance: ${tokenBalance}`);
     },
     TEST_TIMEOUT,
   );
 
-  // ===== PRIVATE SETTLEMENT =====
-
   test(
-    "winner redeems shares for collateral",
+    "burn_sets still works after resolution",
     async () => {
       if (!hasAttestation()) {
         console.log("Skipping: no attestation file.");
         return;
       }
 
-      const { result: outcomeIsYes } = await market.methods
-        .get_resolution_outcome()
-        .simulate({ from: adminAddress });
+      // Bob holds complete sets. He can burn them regardless of outcome.
+      const { result: yesBalance } = await market.methods
+        .get_yes_balance(bobAddress)
+        .simulate({ from: bobAddress });
+      const { result: noBalance } = await market.methods
+        .get_no_balance(bobAddress)
+        .simulate({ from: bobAddress });
 
-      if (outcomeIsYes) {
-        // Alice holds YES shares — she wins
-        const { result: yesBalance } = await market.methods
-          .get_yes_balance(aliceAddress)
-          .simulate({ from: aliceAddress });
-        expect(yesBalance).toBeGreaterThan(0n);
-
-        const { result: collateralBefore } = await market.methods
-          .get_collateral_balance(aliceAddress)
-          .simulate({ from: aliceAddress });
-
-        const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
-        const { receipt } = await market.methods
-          .redeem(yesBalance)
-          .send(sendOpts);
-        expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
-
-        const { result: collateralAfter } = await market.methods
-          .get_collateral_balance(aliceAddress)
-          .simulate({ from: aliceAddress });
-        expect(collateralAfter).toBe(collateralBefore + yesBalance);
-
-        console.log(
-          `Alice redeemed ${yesBalance} YES shares. Collateral: ${collateralBefore} -> ${collateralAfter}`,
-        );
-      } else {
-        // Bob holds NO shares — he wins
-        const { result: noBalance } = await market.methods
-          .get_no_balance(bobAddress)
-          .simulate({ from: bobAddress });
-        expect(noBalance).toBeGreaterThan(0n);
-
-        const { result: collateralBefore } = await market.methods
-          .get_collateral_balance(bobAddress)
-          .simulate({ from: bobAddress });
-
+      const burnAmount = yesBalance < noBalance ? yesBalance : noBalance;
+      if (burnAmount > 0n) {
         const sendOpts = { from: bobAddress, fee: { paymentMethod } };
         const { receipt } = await market.methods
-          .redeem(noBalance)
+          .burn_sets(burnAmount)
           .send(sendOpts);
         expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
-
-        const { result: collateralAfter } = await market.methods
-          .get_collateral_balance(bobAddress)
-          .simulate({ from: bobAddress });
-        expect(collateralAfter).toBe(collateralBefore + noBalance);
-
-        console.log(
-          `Bob redeemed ${noBalance} NO shares. Collateral: ${collateralBefore} -> ${collateralAfter}`,
-        );
-      }
-    },
-    TEST_TIMEOUT,
-  );
-
-  test(
-    "loser cannot redeem (no winning shares)",
-    async () => {
-      if (!hasAttestation()) {
-        console.log("Skipping: no attestation file.");
-        return;
-      }
-
-      const { result: outcomeIsYes } = await market.methods
-        .get_resolution_outcome()
-        .simulate({ from: adminAddress });
-
-      if (outcomeIsYes) {
-        // Bob holds NO shares — trying to redeem should fail (he has no YES shares)
-        const sendOpts = { from: bobAddress, fee: { paymentMethod } };
-        await expect(
-          market.methods.redeem(100n).send(sendOpts),
-        ).rejects.toThrow();
-
-        console.log("Bob (NO holder) correctly cannot redeem after YES resolution");
+        console.log(`Bob burned ${burnAmount} complete sets after resolution`);
       } else {
-        // Alice holds YES shares — trying to redeem should fail (she has no NO shares)
-        const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
-        await expect(
-          market.methods.redeem(100n).send(sendOpts),
-        ).rejects.toThrow();
-
-        console.log("Alice (YES holder) correctly cannot redeem after NO resolution");
+        console.log("Bob has no complete sets to burn");
       }
     },
     TEST_TIMEOUT,

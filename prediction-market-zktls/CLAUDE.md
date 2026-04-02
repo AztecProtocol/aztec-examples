@@ -2,54 +2,67 @@
 
 ## Project Overview
 
-Private prediction market on Aztec with zkTLS resolution. Binary outcome markets ("Will BTC be above $X by date Y?") where bets are fully private, resolution uses Primus zkTLS attestations from CoinGecko's price API, and settlement is private.
+Private prediction market on Aztec with zkTLS resolution and real token collateral. Binary outcome markets ("Will BTC be above $X by date Y?") using a **complete-set model** for provable solvency.
 
 ## Architecture
 
-- **src/main.nr**: `PredictionMarketZkTLS` contract — CSMM pricing, partial notes for private betting, zkTLS resolution, private redemption
-- **src/lib.nr**: Constant Sum Market Maker pricing functions
-- **src/config.nr**: `MarketConfig` and `Resolution` structs for PublicImmutable storage
-- **src/price.nr**: ASCII decimal price parser (e.g., "97234.56" → 9723456 cents)
-- **scripts/**: TypeScript for attestation parsing, URL hashing, deployment, attestation generation
+Uses a complete-set model instead of an AMM:
+- `mint_sets(n)`: deposit n collateral tokens, receive n YES + n NO shares
+- `burn_sets(n)`: return n YES + n NO shares, receive n collateral tokens
+- `redeem(n)`: after resolution, burn n winning shares, receive n collateral
+- Solvency invariant: total_collateral = total_yes = total_no (always)
+
+### Files
+- **src/main.nr**: `PredictionMarketZkTLS` contract -- complete sets, token integration, zkTLS resolution, private redemption
+- **src/config.nr**: Constants (NUM_ALLOWED_URLS)
+- **src/price.nr**: ASCII decimal price parser (e.g., "97234.56" -> 9723456 cents)
+- **scripts/**: TypeScript for attestation parsing, URL hashing, deployment
 - **tests/**: Integration tests using vitest
 
 ## Key Design Decisions
 
-- `resolve_market` is **public** (not private) — outcome is inherently public, avoids expensive zkTLS verification in circuit
-- Double-resolution prevention via `PublicImmutable::initialize` (fails on second call)
-- Both response resolves extract the same CoinGecko price to satisfy att_verifier_lib's NUM_RESPONSE_RESOLVE=2
-- `redeem` is **private** — burns winning shares and credits collateral via private notes
+- **Complete-set model** instead of AMM -- provably solvent, no insolvency risk
+- **Real token collateral** via defi-wonderland/aztec-standards Token contract
+- `mint_sets` uses `transfer_private_to_public` (user -> contract public balance) with auth witness
+- `burn_sets`/`redeem` use `transfer_public_to_private` (contract -> user private balance)
+- `resolve_market` is **private** (ECDSA verification in circuit), enqueues public `_set_resolution`
+- **Resolution window** (7 days) limits stale attestation attacks
+- Double-resolution prevention via `PublicImmutable::initialize`
+
+## Token Integration
+
+Collateral flow:
+- Deposit: `Token.transfer_private_to_public(user, market, amount, nonce)` -- requires auth witness
+- Withdrawal: `Token.transfer_public_to_private(market, user, amount, 0)` -- no auth witness (market is `from`)
+
+Deployment order:
+1. Deploy PredictionMarketZkTLS
+2. Deploy Token (with initial supply)
+3. Call `market.set_token(token.address)`
 
 ## Development Commands
 
 ```bash
 yarn install          # Install dependencies
 yarn ccc              # Compile contract + generate TypeScript bindings
-yarn url-hashes       # Compute Poseidon2 hashes for CoinGecko URLs
-yarn generate         # Generate zkTLS price attestation (needs PRIMUS_APP_ID/SECRET in .env)
-yarn demo             # Full lifecycle: deploy, bet, resolve, redeem
+yarn test:noir        # Run Noir unit tests (price parser)
+yarn generate         # Generate zkTLS price attestation
+yarn demo             # Full lifecycle demo
 yarn test             # Run integration tests
-yarn test:noir        # Run Noir unit tests (pricing + price parser)
 ```
-
-## Key Dependencies
-
-- Aztec: `v4.2.0-aztecnr-rc.2`
-- `att_verifier_lib`: from `primus-labs/zktls-verification-noir` (main)
-- `poseidon` v0.2.6: Poseidon2 for URL hashing
-- `balance_set` + `uint_note`: Private balance management
 
 ## Contract Constants
 
 Must stay in sync between contract and TypeScript:
 - `MAX_URL_LEN = 128`
 - `MAX_PLAINTEXT_LEN = 50`
-- `NUM_RESPONSE_RESOLVE = 2` (price + price_confirm)
-- `NUM_ALLOWED_URLS = 3` (fixed by att_verifier_lib)
+- `NUM_RESPONSE_RESOLVE = 2`
+- `NUM_ALLOWED_URLS = 3`
+- `RESOLUTION_WINDOW = 604800` (7 days in seconds)
 
-## Market Lifecycle
+## Dependencies
 
-1. Deploy with config (admin, liquidity, expiry, threshold, URL hashes)
-2. Users deposit collateral and buy YES/NO shares (all private)
-3. After expiry, anyone resolves with a CoinGecko zkTLS attestation
-4. Winners redeem shares for collateral 1:1 (private)
+- Aztec: `v4.2.0-aztecnr-rc.2`
+- Token: `defi-wonderland/aztec-standards` at `v4.2.0-aztecnr-rc.2`
+- `att_verifier_lib`: from `primus-labs/zktls-verification-noir` (main)
+- `poseidon` v0.2.6
