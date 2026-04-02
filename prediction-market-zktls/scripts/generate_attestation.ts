@@ -76,9 +76,11 @@ async function main() {
     responseResolves,
   );
 
-  // Use proxy TLS mode
+  // Use MPC TLS mode: client and attester collaboratively compute the
+  // attestation so neither party sees the full TLS key material alone,
+  // reducing trust in the attester compared to proxy TLS.
   generateRequest.setAttMode({
-    algorithmType: "proxytls",
+    algorithmType: "mpctls",
   });
 
   console.log("Starting attestation process...");

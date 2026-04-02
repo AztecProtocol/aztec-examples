@@ -29,7 +29,8 @@ Users trade YES and NO shares peer-to-peer. The market price emerges from what t
 ```
 1. DEPLOY
    Admin creates market: "BTC above $50k by July 1?"
-   Sets: threshold, expiry, CoinGecko URL hash, collateral token
+   Sets: threshold, expiry, CoinGecko URL hash, collateral token,
+         trusted attester key hash (Poseidon2 of Primus public key)
 
 2. MINT SETS (private)
    Users deposit collateral tokens -> receive equal YES + NO shares
@@ -40,8 +41,8 @@ Users trade YES and NO shares peer-to-peer. The market price emerges from what t
    Can also burn_sets() to exit entirely (return YES+NO for collateral)
 
 4. RESOLUTION (after expiry, within 7-day window)
-   Anyone submits CoinGecko zkTLS attestation
-   Private: ECDSA verification + price parsing
+   Anyone submits CoinGecko zkTLS attestation (MPC-TLS mode)
+   Private: ECDSA verification + attester identity check + price parsing
    Public: expiry check + resolution window + state update
 
 5. SETTLEMENT (private)
@@ -86,6 +87,7 @@ yarn test
 - `yes_balances`, `no_balances` -- private share notes (Owned<BalanceSet>)
 - `token` -- collateral token address (PublicImmutable)
 - `total_sets` -- total complete sets outstanding (PublicMutable)
+- `trusted_attester_hash` -- Poseidon2 hash of trusted Primus attester public key (PublicImmutable)
 - `expiry`, `price_threshold`, `threshold_above`, `allowed_url_hashes` -- market config (PublicImmutable)
 - `resolution_outcome`, `resolution_price` -- result (PublicImmutable, initialized once)
 
@@ -107,10 +109,18 @@ Uses [defi-wonderland/aztec-standards](https://github.com/defi-wonderland/aztec-
 
 ### zkTLS Resolution
 
+Uses [Primus zkTLS](https://primuslabs.xyz) in **MPC-TLS mode** (`mpctls`): the client and Primus attester collaboratively compute the TLS session key material via multi-party computation. Neither party holds the full key alone, so neither can unilaterally forge TLS data.
+
 After market expiry (within 7-day resolution window):
-1. Anyone fetches BTC price from CoinGecko via Primus zkTLS
-2. `resolve_market` verifies ECDSA signature + SHA256 content hashes (private circuit)
-3. `_set_resolution` checks expiry window and sets outcome (public, `PublicImmutable::initialize` prevents double-resolution)
+1. Anyone fetches BTC price from CoinGecko via Primus zkTLS (MPC-TLS mode)
+2. `resolve_market` (private) verifies ECDSA signature, checks attester identity against pinned key hash, parses price
+3. `_set_resolution` (public) checks expiry window and sets outcome (`PublicImmutable::initialize` prevents double-resolution)
+
+**Trust assumptions:**
+- **Primus attester identity** is pinned at deployment (Poseidon2 hash of the attester's secp256k1 public key stored in contract). Attestations from unknown signers are rejected.
+- **MPC-TLS** prevents either party (client or attester) from forging TLS data unilaterally. In contrast, proxy-TLS mode trusts the attester to actually communicate with the intended server.
+- **CoinGecko** is trusted as the price data source. The contract whitelists allowed API URLs via Poseidon2 hashes.
+- **Resolution window** (7 days) limits the use of stale attestations.
 
 ## Project Structure
 
@@ -122,7 +132,7 @@ prediction-market-zktls/
 |   +-- price.nr          # ASCII price parser + unit tests
 |-- scripts/
 |   |-- parse_attestation.ts     # Attestation -> contract args
-|   |-- compute_url_hashes.ts    # Poseidon2 URL hashing
+|   |-- compute_url_hashes.ts    # Poseidon2 URL + attester key hashing
 |   |-- generate_attestation.ts  # CoinGecko attestation generator
 |   |-- deploy_and_resolve.ts    # Full lifecycle demo
 |   +-- sponsored_fpc.ts         # Fee payment helper

@@ -22,7 +22,7 @@
   "data": "{\"price\":\"97234.56\",\"price_confirm\":\"97234.56\"}",
   "attConditions": "[{\"op\":\"SHA256_EX\",\"field\":\"price\"},{\"op\":\"SHA256_EX\",\"field\":\"price_confirm\"}]",
   "timestamp": 1775066673365,
-  "additionParams": "{\"algorithmType\":\"proxytls\"}",
+  "additionParams": "{\"algorithmType\":\"mpctls\"}",
   "attestors": [
     {
       "attestorAddr": "0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6",

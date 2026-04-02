@@ -29,7 +29,8 @@ import {
   parseAttestationFile,
   DEFAULT_ALLOWED_URLS,
 } from "../scripts/parse_attestation.js";
-import { computeAllowedUrlHashes } from "../scripts/compute_url_hashes.js";
+import { computeAllowedUrlHashes, computeAttesterKeyHash } from "../scripts/compute_url_hashes.js";
+import { Barretenberg } from "@aztec/bb.js";
 
 const NODE_URL = "http://localhost:8080";
 const TEST_TIMEOUT = 600_000;
@@ -54,6 +55,7 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
   let token: TokenContract;
   let paymentMethod: SponsoredFeePaymentMethod;
   let urlHashes: string[];
+  let attesterKeyHash: string;
   let expiry: bigint;
 
   beforeAll(async () => {
@@ -86,6 +88,19 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
 
     urlHashes = await computeAllowedUrlHashes(DEFAULT_ALLOWED_URLS);
 
+    // Compute attester key hash from attestation (or use dummy for non-resolution tests)
+    if (hasAttestation()) {
+      const parsed = parseAttestationFile(ATTESTATION_PATH, DEFAULT_ALLOWED_URLS);
+      const bb = await Barretenberg.new({ threads: 1 });
+      attesterKeyHash = await computeAttesterKeyHash(bb, parsed.publicKeyX, parsed.publicKeyY);
+      await bb.destroy();
+      console.log(`Attester key hash: ${attesterKeyHash}`);
+    } else {
+      // Dummy hash -- resolution tests will be skipped anyway
+      attesterKeyHash = Fr.random().toString();
+      console.log("No attestation file; using dummy attester key hash");
+    }
+
     // Set expiry 5 minutes from now
     expiry = BigInt(Math.floor(Date.now() / 1000) + 300);
   }, TEST_TIMEOUT);
@@ -109,6 +124,7 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
         PRICE_THRESHOLD,
         THRESHOLD_ABOVE,
         urlHashes as unknown as FieldLike[],
+        attesterKeyHash,
       ).send(sendOpts));
 
       expect(market.address).toBeDefined();

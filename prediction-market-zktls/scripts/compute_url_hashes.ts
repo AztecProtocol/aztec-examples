@@ -45,6 +45,35 @@ export async function computeUrlHash(
 }
 
 /**
+ * Compute the Poseidon2 hash of an attester's public key (x || y), matching
+ * the contract's identity check in resolve_market:
+ *
+ *   let mut key_hash_input: [Field; 64] = [0; 64];
+ *   for i in 0..32 {
+ *       key_hash_input[i] = public_key_x[i] as Field;
+ *       key_hash_input[i + 32] = public_key_y[i] as Field;
+ *   }
+ *   Poseidon2::hash(key_hash_input, 64)
+ */
+export async function computeAttesterKeyHash(
+  bb: Barretenberg,
+  publicKeyX: number[],
+  publicKeyY: number[],
+): Promise<string> {
+  if (publicKeyX.length !== 32 || publicKeyY.length !== 32) {
+    throw new Error("Public key components must be 32 bytes each");
+  }
+
+  const inputs: Uint8Array[] = new Array(64).fill(null).map((_, i) => {
+    const val = i < 32 ? BigInt(publicKeyX[i]) : BigInt(publicKeyY[i - 32]);
+    return new Fr(val).toBuffer();
+  });
+
+  const result = await bb.poseidon2Hash({ inputs });
+  return Fr.fromBuffer(Buffer.from(result.hash)).toString();
+}
+
+/**
  * Compute URL hashes for all allowed URLs.
  * Returns hex strings suitable for passing to the contract constructor.
  */

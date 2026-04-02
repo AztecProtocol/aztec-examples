@@ -29,7 +29,8 @@ import {
   parseAttestationFile,
   DEFAULT_ALLOWED_URLS,
 } from "./parse_attestation.js";
-import { computeAllowedUrlHashes } from "./compute_url_hashes.js";
+import { computeAllowedUrlHashes, computeAttesterKeyHash } from "./compute_url_hashes.js";
+import { Barretenberg } from "@aztec/bb.js";
 
 const NODE_URL = process.env.AZTEC_NODE_URL ?? "http://localhost:8080";
 const ATTESTATION_PATH = process.argv[2] ?? "testdata/attestation.json";
@@ -72,12 +73,21 @@ async function main() {
   console.log("Computing URL hashes...");
   const urlHashes = await computeAllowedUrlHashes(DEFAULT_ALLOWED_URLS);
 
+  // Compute trusted attester key hash from the attestation
+  console.log("Computing attester key hash from attestation...");
+  const parsed = parseAttestationFile(ATTESTATION_PATH, DEFAULT_ALLOWED_URLS);
+  const bb = await Barretenberg.new({ threads: 1 });
+  const attesterKeyHash = await computeAttesterKeyHash(bb, parsed.publicKeyX, parsed.publicKeyY);
+  await bb.destroy();
+  console.log(`  Attester key hash: ${attesterKeyHash}`);
+
   const expiry = BigInt(Math.floor((Date.now() + EXPIRY_OFFSET_MS) / 1000));
   console.log(`Deploying market (threshold=$${Number(PRICE_THRESHOLD) / 100}, expiry=${expiry})...`);
 
   const { contract: market } = await PredictionMarketZkTLSContract.deploy(
     wallet, adminAddr, expiry, PRICE_THRESHOLD, THRESHOLD_ABOVE,
     urlHashes as unknown as FieldLike[],
+    attesterKeyHash,
   ).send(sendAs(adminAddr));
   console.log(`  Market: ${market.address}`);
 
@@ -118,7 +128,6 @@ async function main() {
   }
 
   console.log("Resolving market with zkTLS attestation...");
-  const parsed = parseAttestationFile(ATTESTATION_PATH, DEFAULT_ALLOWED_URLS);
 
   await market.methods
     .resolve_market(

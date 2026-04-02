@@ -65,6 +65,9 @@ pub contract PredictionMarketZkTLS {
         threshold_above: PublicImmutable<bool, Context>,
         allowed_url_hashes: PublicImmutable<[Field; NUM_ALLOWED_URLS], Context>,
 
+        // Trusted Primus attester identity (Poseidon2 hash of public key bytes)
+        trusted_attester_hash: PublicImmutable<Field, Context>,
+
         // Resolution (initialized once when market resolves)
         resolution_outcome: PublicImmutable<bool, Context>,
         resolution_price: PublicImmutable<u128, Context>,
@@ -82,8 +85,10 @@ pub contract PredictionMarketZkTLS {
         price_threshold: u128,
         threshold_above: bool,
         allowed_url_hashes: [Field; NUM_ALLOWED_URLS],
+        attester_key_hash: Field,
     ) {
         assert(!admin.is_zero(), "INVALID_ADMIN");
+        assert(attester_key_hash != 0, "INVALID_ATTESTER_HASH");
 
         self.storage.admin.write(admin);
         self.storage.total_sets.write(0);
@@ -92,6 +97,7 @@ pub contract PredictionMarketZkTLS {
         self.storage.price_threshold.initialize(price_threshold);
         self.storage.threshold_above.initialize(threshold_above);
         self.storage.allowed_url_hashes.initialize(allowed_url_hashes);
+        self.storage.trusted_attester_hash.initialize(attester_key_hash);
     }
 
     /// Set the collateral token address. Can only be called once, by the admin.
@@ -261,6 +267,16 @@ pub contract PredictionMarketZkTLS {
             data_hashes,
             contents,
         );
+
+        // Verify attester identity: Poseidon2(pubkey_x || pubkey_y) must match stored hash
+        let mut key_hash_input: [Field; 64] = [0; 64];
+        for i in 0..32 {
+            key_hash_input[i] = public_key_x[i] as Field;
+            key_hash_input[i + 32] = public_key_y[i] as Field;
+        }
+        let attester_hash = std::hash::poseidon2::Poseidon2::hash(key_hash_input, 64);
+        let trusted_hash = self.storage.trusted_attester_hash.read();
+        assert(attester_hash == trusted_hash, "UNTRUSTED_ATTESTER");
 
         // Check URL hashes against allowed list (historical read from private)
         let stored_hashes = self.storage.allowed_url_hashes.read();

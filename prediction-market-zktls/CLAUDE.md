@@ -26,6 +26,8 @@ Uses a complete-set model instead of an AMM:
 - `mint_sets` uses `transfer_private_to_public` (user -> contract public balance) with auth witness
 - `burn_sets`/`redeem` use `transfer_public_to_private` (contract -> user private balance)
 - `resolve_market` is **private** (ECDSA verification in circuit), enqueues public `_set_resolution`
+- **Trusted attester pinning**: Poseidon2 hash of attester's public key stored at deployment; `resolve_market` rejects attestations from unknown signers
+- **MPC TLS mode** (`mpctls`): client and attester collaboratively compute attestation (neither sees full TLS key material)
 - **Resolution window** (7 days) limits stale attestation attacks
 - Double-resolution prevention via `PublicImmutable::initialize`
 
@@ -36,10 +38,11 @@ Collateral flow:
 - Withdrawal: `Token.transfer_public_to_private(market, user, amount, 0)` -- no auth witness (market is `from`)
 
 Deployment order:
-1. Deploy PredictionMarketZkTLS
-2. Deploy Token (with `constructor_with_minter`, admin as minter)
-3. Call `market.set_token(token.address)`
-4. Mint tokens to users via `token.mint_to_private(recipient, amount)`
+1. Parse attestation file to extract attester public key, compute Poseidon2 key hash
+2. Deploy PredictionMarketZkTLS (pass `attester_key_hash` to constructor)
+3. Deploy Token (with `constructor_with_minter`, admin as minter)
+4. Call `market.set_token(token.address)`
+5. Mint tokens to users via `token.mint_to_private(recipient, amount)`
 
 ## Development Commands
 
