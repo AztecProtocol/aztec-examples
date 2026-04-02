@@ -2,3 +2,8 @@ target
 .DS_Store
 ivc
 node_modules
+.env
+store
+artifacts
+codegenCache.json
+*.json.bak
