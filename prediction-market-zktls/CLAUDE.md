@@ -37,8 +37,9 @@ Collateral flow:
 
 Deployment order:
 1. Deploy PredictionMarketZkTLS
-2. Deploy Token (with initial supply)
+2. Deploy Token (with `constructor_with_minter`, admin as minter)
 3. Call `market.set_token(token.address)`
+4. Mint tokens to users via `token.mint_to_private(recipient, amount)`
 
 ## Development Commands
 

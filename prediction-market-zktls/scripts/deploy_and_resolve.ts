@@ -81,27 +81,28 @@ async function main() {
   ).send(sendAs(adminAddr));
   console.log(`  Market: ${market.address}`);
 
-  const { contract: token } = await TokenContract.deploy(
-    wallet, "Prediction Collateral", "PCOL", 18,
-    TOKEN_MINT * 3n, adminAddr,
+  const { contract: token } = await TokenContract.deployWithOpts<"constructor_with_minter">(
+    { method: "constructor_with_minter", wallet },
+    "Prediction Collateral", "PCOL", 18, adminAddr,
   ).send(sendAs(adminAddr));
   console.log(`  Token:  ${token.address}`);
 
   await market.methods.set_token(token.address).send(sendAs(adminAddr));
   console.log("  Linked market -> token");
 
-  // Distribute tokens
-  await token.methods.transfer_private_to_private(adminAddr, aliceAddr, TOKEN_MINT, 0).send(sendAs(adminAddr));
-  await token.methods.transfer_private_to_private(adminAddr, bobAddr, TOKEN_MINT, 0).send(sendAs(adminAddr));
-  console.log(`  Distributed ${TOKEN_MINT} tokens each\n`);
+  // Mint tokens to Alice and Bob
+  await token.methods.mint_to_private(aliceAddr, TOKEN_MINT).send(sendAs(adminAddr));
+  await token.methods.mint_to_private(bobAddr, TOKEN_MINT).send(sendAs(adminAddr));
+  console.log(`  Minted ${TOKEN_MINT} tokens each\n`);
 
   // 3. Mint complete sets
   for (const [name, addr] of [["Alice", aliceAddr], ["Bob", bobAddr]] as const) {
     const nonce = Fr.random();
-    const action = token.methods.transfer_private_to_public(addr, market.address, SET_AMOUNT, nonce);
-    const witness = await wallet.createAuthWit(action, addr);
-    await wallet.addAuthWitness(witness);
-    await market.methods.mint_sets(SET_AMOUNT, nonce).send(sendAs(addr));
+    const witness = await wallet.createAuthWit(addr, {
+      caller: market.address,
+      action: token.methods.transfer_private_to_public(addr, market.address, SET_AMOUNT, nonce),
+    });
+    await market.methods.mint_sets(SET_AMOUNT, nonce).send({ ...sendAs(addr), authWitnesses: [witness] });
     console.log(`${name} minted ${SET_AMOUNT} complete sets (YES + NO)`);
   }
 

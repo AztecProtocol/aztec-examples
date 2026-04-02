@@ -114,14 +114,13 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
       expect(market.address).toBeDefined();
       console.log(`Market: ${market.address}`);
 
-      // Deploy Token with initial supply to admin
-      ({ contract: token } = await TokenContract.deploy(
-        wallet,
+      // Deploy Token with admin as minter (same pattern as zktls-airdrop)
+      ({ contract: token } = await TokenContract.deployWithOpts<"constructor_with_minter">(
+        { method: "constructor_with_minter", wallet },
         "Prediction Collateral",
         "PCOL",
         18,
-        MINT_AMOUNT * 3n,
-        adminAddress,
+        adminAddress, // minter = admin
       ).send(sendOpts));
 
       expect(token.address).toBeDefined();
@@ -131,14 +130,14 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
       await market.methods.set_token(token.address).send(sendOpts);
       console.log("Linked market -> token");
 
-      // Distribute tokens to Alice and Bob
+      // Mint tokens to Alice and Bob via mint_to_private (admin is minter)
       await token.methods
-        .transfer_private_to_private(adminAddress, aliceAddress, MINT_AMOUNT, 0)
+        .mint_to_private(aliceAddress, MINT_AMOUNT)
         .send(sendOpts);
       await token.methods
-        .transfer_private_to_private(adminAddress, bobAddress, MINT_AMOUNT, 0)
+        .mint_to_private(bobAddress, MINT_AMOUNT)
         .send(sendOpts);
-      console.log(`Distributed ${MINT_AMOUNT} tokens each to Alice and Bob`);
+      console.log(`Minted ${MINT_AMOUNT} tokens each to Alice and Bob`);
     },
     TEST_TIMEOUT,
   );
@@ -162,21 +161,21 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
     async () => {
       const sendOpts = { from: aliceAddress, fee: { paymentMethod } };
 
-      // Create auth witness for the token transfer
+      // Create auth witness allowing market contract to transfer Alice's tokens
       const nonce = Fr.random();
-      const action = token.methods.transfer_private_to_public(
-        aliceAddress,
-        market.address,
-        SET_AMOUNT,
-        nonce,
-      );
-      const witness = await wallet.createAuthWit(action, aliceAddress);
-      await wallet.addAuthWitness(witness);
-
-      // Mint complete sets
+      const witness = await wallet.createAuthWit(aliceAddress, {
+        caller: market.address,
+        action: token.methods.transfer_private_to_public(
+          aliceAddress,
+          market.address,
+          SET_AMOUNT,
+          nonce,
+        ),
+      });
+      // Mint complete sets (pass auth witness in send options)
       const { receipt } = await market.methods
         .mint_sets(SET_AMOUNT, nonce)
-        .send(sendOpts);
+        .send({ ...sendOpts, authWitnesses: [witness] });
       expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
 
       // Check YES and NO balances
@@ -207,18 +206,18 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
       const sendOpts = { from: bobAddress, fee: { paymentMethod } };
 
       const nonce = Fr.random();
-      const action = token.methods.transfer_private_to_public(
-        bobAddress,
-        market.address,
-        SET_AMOUNT,
-        nonce,
-      );
-      const witness = await wallet.createAuthWit(action, bobAddress);
-      await wallet.addAuthWitness(witness);
-
+      const witness = await wallet.createAuthWit(bobAddress, {
+        caller: market.address,
+        action: token.methods.transfer_private_to_public(
+          bobAddress,
+          market.address,
+          SET_AMOUNT,
+          nonce,
+        ),
+      });
       const { receipt } = await market.methods
         .mint_sets(SET_AMOUNT, nonce)
-        .send(sendOpts);
+        .send({ ...sendOpts, authWitnesses: [witness] });
       expect(receipt.executionResult).toBe(TxExecutionResult.SUCCESS);
 
       const { result: totalSets } = await market.methods
