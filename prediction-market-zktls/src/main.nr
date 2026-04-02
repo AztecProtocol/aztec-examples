@@ -22,6 +22,7 @@ pub contract PredictionMarketZkTLS {
     use crate::price::{parse_price_cents, MAX_PLAINTEXT_LEN};
 
     use att_verifier_lib::verify_attestation_hashing;
+    use poseidon::poseidon2::Poseidon2;
     use token_contract::Token;
 
     use aztec::{
@@ -274,7 +275,7 @@ pub contract PredictionMarketZkTLS {
             key_hash_input[i] = public_key_x[i] as Field;
             key_hash_input[i + 32] = public_key_y[i] as Field;
         }
-        let attester_hash = std::hash::poseidon2::Poseidon2::hash(key_hash_input, 64);
+        let attester_hash = Poseidon2::hash(key_hash_input, 64);
         let trusted_hash = self.storage.trusted_attester_hash.read();
         assert(attester_hash == trusted_hash, "UNTRUSTED_ATTESTER");
 
