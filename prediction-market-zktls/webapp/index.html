@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prediction Market - zkTLS</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Primus zkTLS WASM: primus_zk.js sets up globals, client_plugin.js loads WASM -->
+    <script src="/primus_zk.js"></script>
+    <script>
+      // Expose implicit globals to window so bundled ES modules can access them
+      if (typeof Module !== 'undefined') {
+        window.Module = Module;
+        var _origInit = Module.onRuntimeInitialized;
+        Module.onRuntimeInitialized = function() {
+          console.log('[Primus WASM] initialized');
+          if (typeof Module_callAlgorithm !== 'undefined') {
+            window.Module_callAlgorithm = Module_callAlgorithm;
+          }
+          if (typeof primusZktlsInit !== 'undefined') window.primusZktlsInit = primusZktlsInit;
+          if (typeof primusZktlsGetAttestation !== 'undefined') window.primusZktlsGetAttestation = primusZktlsGetAttestation;
+          if (typeof primusZktlsGetAttestationResult !== 'undefined') window.primusZktlsGetAttestationResult = primusZktlsGetAttestationResult;
+          if (_origInit) _origInit();
+        };
+      } else {
+        console.error('[Primus WASM] primus_zk.js did not load');
+      }
+    </script>
+    <script src="/client_plugin.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -272,6 +272,135 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
     TEST_TIMEOUT,
   );
 
+  // ===== CLOB: PLACE AND TAKE ORDER =====
+
+  test(
+    "alice places YES order, bob takes it",
+    async () => {
+      // Alice places a buy-YES order at 0.60 for 500 shares
+      const price = 600_000n; // 0.60 in PRICE_PRECISION
+      const amount = 500n;
+      const cancelSecret = Fr.random();
+      const nonce = Fr.random();
+      const collateral = (amount * price) / 1_000_000n; // 300
+
+      const aliceOpts = { from: aliceAddress, fee: { paymentMethod } };
+      const aliceWit = await wallet.createAuthWit(aliceAddress, {
+        caller: market.address,
+        action: token.methods.transfer_private_to_public(
+          aliceAddress, market.address, collateral, nonce,
+        ),
+      });
+
+      console.log(`Alice placing YES order: ${amount} shares @ $0.60 (${collateral} collateral)...`);
+      await market.methods
+        .place_order(true, price, amount, cancelSecret, nonce)
+        .send({ ...aliceOpts, authWitnesses: [aliceWit] });
+
+      // Compute orderId = Poseidon2(cancelSecret)
+      const bb = await Barretenberg.new({ threads: 1 });
+      const hashResult = await bb.poseidon2Hash({
+        inputs: [cancelSecret.toBuffer()],
+      });
+      const orderId = Fr.fromBuffer(Buffer.from(hashResult.hash));
+      await bb.destroy();
+
+      console.log(`Order placed! ID: ${orderId}`);
+
+      // Verify order exists on chain
+      const { result: [order, isConsumed] } = await market.methods
+        .get_order(orderId as unknown as FieldLike)
+        .simulate({ from: adminAddress });
+      expect(order.is_buy_yes).toBe(true);
+      expect(order.price).toBe(price);
+      expect(order.amount).toBe(amount);
+      expect(isConsumed).toBe(false);
+
+      // Bob takes the order (pays 1 - 0.60 = 0.40 per share = 200 collateral)
+      const takerCollateral = (amount * (1_000_000n - price)) / 1_000_000n; // 200
+      const bobNonce = Fr.random();
+      const bobOpts = { from: bobAddress, fee: { paymentMethod } };
+      const bobWit = await wallet.createAuthWit(bobAddress, {
+        caller: market.address,
+        action: token.methods.transfer_private_to_public(
+          bobAddress, market.address, takerCollateral, bobNonce,
+        ),
+      });
+
+      console.log(`Bob taking order (cost: ${takerCollateral} collateral)...`);
+      await market.methods
+        .take_order(orderId as unknown as FieldLike, bobNonce)
+        .send({ ...bobOpts, authWitnesses: [bobWit] });
+
+      // Verify order is consumed
+      const { result: [, isConsumedAfter] } = await market.methods
+        .get_order(orderId as unknown as FieldLike)
+        .simulate({ from: adminAddress });
+      expect(isConsumedAfter).toBe(true);
+
+      // Alice should have gained YES shares, Bob should have gained NO shares
+      const { result: aliceYes } = await market.methods
+        .get_yes_balance(aliceAddress)
+        .simulate({ from: aliceAddress });
+      const { result: bobNo } = await market.methods
+        .get_no_balance(bobAddress)
+        .simulate({ from: bobAddress });
+
+      // Alice had SET_AMOUNT - 1000 YES from earlier, now gains 500 more
+      expect(aliceYes).toBe(SET_AMOUNT - 1000n + amount);
+      // Bob had SET_AMOUNT NO from earlier, now gains 500 more
+      expect(bobNo).toBe(SET_AMOUNT + amount);
+
+      console.log(`Order filled! Alice YES=${aliceYes}, Bob NO=${bobNo}`);
+    },
+    TEST_TIMEOUT,
+  );
+
+  test(
+    "alice places order and cancels it",
+    async () => {
+      const price = 700_000n;
+      const amount = 200n;
+      const cancelSecret = Fr.random();
+      const nonce = Fr.random();
+      const collateral = (amount * price) / 1_000_000n; // 140
+
+      const aliceOpts = { from: aliceAddress, fee: { paymentMethod } };
+      const aliceWit = await wallet.createAuthWit(aliceAddress, {
+        caller: market.address,
+        action: token.methods.transfer_private_to_public(
+          aliceAddress, market.address, collateral, nonce,
+        ),
+      });
+
+      await market.methods
+        .place_order(true, price, amount, cancelSecret, nonce)
+        .send({ ...aliceOpts, authWitnesses: [aliceWit] });
+
+      // Compute orderId
+      const bb = await Barretenberg.new({ threads: 1 });
+      const hashResult = await bb.poseidon2Hash({
+        inputs: [cancelSecret.toBuffer()],
+      });
+      const orderId = Fr.fromBuffer(Buffer.from(hashResult.hash));
+      await bb.destroy();
+
+      console.log(`Cancelling order ${orderId}...`);
+      await market.methods
+        .cancel_order(orderId as unknown as FieldLike, cancelSecret as unknown as FieldLike)
+        .send(aliceOpts);
+
+      // Verify order is consumed (cancelled)
+      const { result: [, isConsumed] } = await market.methods
+        .get_order(orderId as unknown as FieldLike)
+        .simulate({ from: adminAddress });
+      expect(isConsumed).toBe(true);
+
+      console.log("Order cancelled! Collateral refunded.");
+    },
+    TEST_TIMEOUT,
+  );
+
   // ===== PRE-RESOLUTION GUARDS =====
 
   test(
@@ -316,6 +445,7 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
           parsed.allowedUrls as unknown as FieldLike[][],
           parsed.dataHashes as unknown as FieldLike[][],
           parsed.contents as unknown as FieldLike[][],
+          parsed.timestamp,
         )
         .send(sendOpts);
 
@@ -361,6 +491,7 @@ describe("PredictionMarketZkTLS - Complete Set Model", () => {
             parsed.allowedUrls as unknown as FieldLike[][],
             parsed.dataHashes as unknown as FieldLike[][],
             parsed.contents as unknown as FieldLike[][],
+            parsed.timestamp,
           )
           .send(sendOpts),
       ).rejects.toThrow();

@@ -81,7 +81,11 @@ async function main() {
   await bb.destroy();
   console.log(`  Attester key hash: ${attesterKeyHash}`);
 
-  const expiry = BigInt(Math.floor((Date.now() + EXPIRY_OFFSET_MS) / 1000));
+  // Set expiry before the attestation timestamp so the attestation counts as post-expiry.
+  // The attestation_timestamp freshness check requires: attestation_timestamp >= expiry * 1000.
+  // For demo, use the attestation timestamp minus a small offset.
+  const attestationTimestampSec = Number(parsed.timestamp / 1000n);
+  const expiry = BigInt(attestationTimestampSec - 60); // 1 minute before attestation
   console.log(`Deploying market (threshold=$${Number(PRICE_THRESHOLD) / 100}, expiry=${expiry})...`);
 
   const { contract: market } = await PredictionMarketZkTLSContract.deploy(
@@ -116,7 +120,7 @@ async function main() {
     console.log(`${name} minted ${SET_AMOUNT} complete sets (YES + NO)`);
   }
 
-  const totalSets = await market.methods.get_total_sets().simulate({ from: adminAddr });
+  const { result: totalSets } = await market.methods.get_total_sets().simulate({ from: adminAddr });
   console.log(`Total sets outstanding: ${totalSets}\n`);
 
   // 4. Wait for expiry and resolve
@@ -139,17 +143,18 @@ async function main() {
       parsed.allowedUrls as unknown as FieldLike[][],
       parsed.dataHashes as unknown as FieldLike[][],
       parsed.contents as unknown as FieldLike[][],
+      parsed.timestamp,
     )
     .send(sendAs(adminAddr));
 
-  const outcomeIsYes = await market.methods.get_resolution_outcome().simulate({ from: adminAddr });
-  const resolvedPrice = await market.methods.get_resolution_price().simulate({ from: adminAddr });
+  const { result: outcomeIsYes } = await market.methods.get_resolution_outcome().simulate({ from: adminAddr });
+  const { result: resolvedPrice } = await market.methods.get_resolution_price().simulate({ from: adminAddr });
   console.log(`Resolved! Outcome: ${outcomeIsYes ? "YES" : "NO"}, Price: $${Number(resolvedPrice) / 100}\n`);
 
   // 5. Winner redeems
   console.log("Alice redeems winning shares...");
   await market.methods.redeem(SET_AMOUNT).send(sendAs(aliceAddr));
-  const aliceTokens = await token.methods.balance_of_private(aliceAddr).simulate({ from: aliceAddr });
+  const { result: aliceTokens } = await token.methods.balance_of_private(aliceAddr).simulate({ from: aliceAddr });
   console.log(`Alice token balance after redemption: ${aliceTokens}`);
 
   console.log("\n=== Prediction market lifecycle complete! ===");

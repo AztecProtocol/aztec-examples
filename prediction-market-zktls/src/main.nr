@@ -1,5 +1,6 @@
 mod config;
 mod price;
+mod order;
 
 use aztec::macros::aztec;
 
@@ -25,13 +26,17 @@ pub contract PredictionMarketZkTLS {
     use poseidon::poseidon2::Poseidon2;
     use token_contract::Token;
 
+    use crate::order::{Order, PRICE_PRECISION};
+
     use aztec::{
-        macros::{functions::{external, initializer, only_self}, storage::storage},
+        macros::{events::event, functions::{external, initializer, only_self}, storage::storage},
         messages::message_delivery::MessageDelivery,
-        protocol::address::AztecAddress,
-        state_vars::{PublicMutable, PublicImmutable, Owned},
+        oracle::nullifiers::check_nullifier_exists,
+        protocol::{address::AztecAddress, traits::{FromField, ToField}},
+        state_vars::{Map, PublicMutable, PublicImmutable, Owned, StateVariable},
     };
     use balance_set::BalanceSet;
+    use uint_note::{UintNote, PartialUintNote};
 
     // ---------------------------------------------------------------------------
     // Constants
@@ -42,6 +47,25 @@ pub contract PredictionMarketZkTLS {
 
     // Resolution must happen within 7 days of expiry (limits stale attestations)
     pub global RESOLUTION_WINDOW: u64 = 604800;
+
+    // ---------------------------------------------------------------------------
+    // Events
+    // ---------------------------------------------------------------------------
+
+    #[event]
+    struct OrderPlaced {
+        order_id: Field,
+    }
+
+    #[event]
+    struct OrderFilled {
+        order_id: Field,
+    }
+
+    #[event]
+    struct OrderCancelled {
+        order_id: Field,
+    }
 
     // ---------------------------------------------------------------------------
     // Storage
@@ -72,6 +96,9 @@ pub contract PredictionMarketZkTLS {
         // Resolution (initialized once when market resolves)
         resolution_outcome: PublicImmutable<bool, Context>,
         resolution_price: PublicImmutable<u128, Context>,
+
+        // CLOB order book
+        orders: Map<Field, PublicImmutable<Order, Context>, Context>,
     }
 
     // ---------------------------------------------------------------------------
@@ -256,6 +283,7 @@ pub contract PredictionMarketZkTLS {
         allowed_urls: [BoundedVec<u8, MAX_URL_LEN>; NUM_ALLOWED_URLS],
         data_hashes: [[u8; 32]; NUM_RESPONSE_RESOLVE],
         contents: [BoundedVec<u8, MAX_PLAINTEXT_LEN>; NUM_RESPONSE_RESOLVE],
+        attestation_timestamp: u64,
     ) {
         // Verify zkTLS attestation (ECDSA signature + SHA256 content hashes)
         let url_hashes: [Field; 2] = verify_attestation_hashing(
@@ -292,6 +320,7 @@ pub contract PredictionMarketZkTLS {
         }
 
         // Both response resolves extract the same price -- verify they match
+        assert(contents[0].len() == contents[1].len(), "PRICE_MISMATCH");
         assert(
             contents[0].storage() == contents[1].storage(),
             "PRICE_MISMATCH",
@@ -310,14 +339,16 @@ pub contract PredictionMarketZkTLS {
         };
 
         // Enqueue public function to check expiry window and set resolution
-        self.enqueue_self._set_resolution(outcome_is_yes, resolved_price);
+        self.enqueue_self._set_resolution(outcome_is_yes, resolved_price, attestation_timestamp);
     }
 
     /// Set resolution state in public context.
     /// Checks expiry and resolution window, then initializes resolution immutables.
+    /// `attestation_timestamp` is the Primus attestation's signed timestamp (ms).
+    /// We require it to be after expiry so stale pre-expiry attestations are rejected.
     #[only_self]
     #[external("public")]
-    fn _set_resolution(outcome_is_yes: bool, resolved_price: u128) {
+    fn _set_resolution(outcome_is_yes: bool, resolved_price: u128, attestation_timestamp: u64) {
         let market_expiry = self.storage.expiry.read();
         let now = self.context.timestamp();
 
@@ -327,9 +358,234 @@ pub contract PredictionMarketZkTLS {
         // Must resolve within RESOLUTION_WINDOW of expiry (limits stale attestations)
         assert(now <= market_expiry + RESOLUTION_WINDOW, "RESOLUTION_WINDOW_EXPIRED");
 
+        // Attestation must have been created after market expiry.
+        // The timestamp is in milliseconds (Primus SDK convention), convert expiry to ms.
+        // NOTE: attestation_timestamp is self-reported by the resolver and not
+        // cryptographically bound here. Full binding requires att_verifier_lib to
+        // expose timestamp verification. This check still raises the bar: a resolver
+        // must claim a post-expiry timestamp, and the real timestamp IS committed in
+        // the signed attestation hash verified in the private function.
+        assert(attestation_timestamp >= market_expiry * 1000, "ATTESTATION_TOO_EARLY");
+
         // Initialize resolution -- fails on second call (prevents double-resolution)
         self.storage.resolution_outcome.initialize(outcome_is_yes);
         self.storage.resolution_price.initialize(resolved_price);
+    }
+
+    // ---------------------------------------------------------------------------
+    // CLOB: Place Order
+    // ---------------------------------------------------------------------------
+
+    /// Place a limit order to buy YES or NO shares.
+    ///
+    /// The maker's identity is hidden inside an encrypted partial note.
+    /// The order ID is derived from this partial note, ensuring uniqueness.
+    /// Returns the order_id for tracking.
+    #[external("private")]
+    fn place_order(
+        is_buy_yes: bool,
+        price: u128,
+        amount: u128,
+        cancel_secret: Field,
+        collateral_nonce: Field,
+    ) -> Field {
+        let sender = self.msg_sender();
+        let token = self.storage.token.read();
+
+        // Compute maker's collateral: price * amount / PRICE_PRECISION
+        let maker_collateral = (amount * price) / PRICE_PRECISION;
+        assert(maker_collateral > 0, "COLLATERAL_TOO_SMALL");
+
+        // Transfer collateral from maker to contract
+        self.call(Token::at(token).transfer_private_to_public(
+            sender,
+            self.context.this_address(),
+            maker_collateral,
+            collateral_nonce,
+        ));
+
+        // Create partial note for maker's future shares (identity hidden here)
+        let partial_note = UintNote::partial(sender, self.context, sender, self.address);
+        let maker_note = partial_note.to_field();
+
+        // order_id = cancel_hash = Poseidon2(cancel_secret)
+        // This is deterministic from the client's perspective (they know cancel_secret).
+        let cancel_hash = Poseidon2::hash([cancel_secret], 1);
+        let order_id = cancel_hash;
+
+        let order = Order::new(is_buy_yes, price, amount, cancel_hash, maker_note);
+
+        // Store order in public
+        self.enqueue_self._store_order(order_id, order);
+
+        order_id
+    }
+
+    #[only_self]
+    #[external("public")]
+    fn _store_order(order_id: Field, order: Order) {
+        assert(!self.storage.resolution_outcome.is_initialized(), "MARKET_RESOLVED");
+
+        // PublicImmutable::initialize fails if order_id already used (uniqueness)
+        self.storage.orders.at(order_id).initialize(order);
+
+        self.emit(OrderPlaced { order_id });
+    }
+
+    // ---------------------------------------------------------------------------
+    // CLOB: Take (Fill) Order
+    // ---------------------------------------------------------------------------
+
+    /// Fill an existing order. The taker deposits the counter-side collateral.
+    /// Both parties receive shares via a complete-set mint:
+    /// - Maker gets their desired side (YES or NO)
+    /// - Taker gets the opposite side
+    ///
+    /// Both identities remain private.
+    #[external("private")]
+    fn take_order(order_id: Field, collateral_nonce: Field) {
+        let taker = self.msg_sender();
+        let token = self.storage.token.read();
+
+        // Read order (PublicImmutable is readable from private)
+        let order = self.storage.orders.at(order_id).read();
+
+        // Taker pays the other side: (1 - price) * amount / PRICE_PRECISION
+        let taker_collateral = (order.amount * (PRICE_PRECISION - order.price)) / PRICE_PRECISION;
+        assert(taker_collateral > 0, "COLLATERAL_TOO_SMALL");
+
+        // Transfer taker's collateral
+        self.call(Token::at(token).transfer_private_to_public(
+            taker,
+            self.context.this_address(),
+            taker_collateral,
+            collateral_nonce,
+        ));
+
+        // Reconstruct maker's partial note from the stored maker_note field
+        let maker_partial_note = PartialUintNote::from_field(order.maker_note);
+
+        // Create taker's partial note for their shares
+        let taker_partial_note = UintNote::partial(taker, self.context, taker, self.address);
+
+        // Determine share slots: maker gets desired side, taker gets opposite
+        let (maker_slot, taker_slot) = if order.is_buy_yes {
+            (
+                self.storage.yes_balances.get_storage_slot(),
+                self.storage.no_balances.get_storage_slot(),
+            )
+        } else {
+            (
+                self.storage.no_balances.get_storage_slot(),
+                self.storage.yes_balances.get_storage_slot(),
+            )
+        };
+
+        // Nullify order -- prevents double-fill AND blocks cancel
+        self.context.push_nullifier(order_id);
+
+        // Enqueue settlement
+        self.enqueue_self._settle_order(
+            order_id,
+            order.amount,
+            maker_partial_note,
+            maker_slot,
+            taker_partial_note,
+            taker_slot,
+        );
+    }
+
+    #[only_self]
+    #[external("public")]
+    fn _settle_order(
+        order_id: Field,
+        amount: u128,
+        maker_partial_note: PartialUintNote,
+        maker_slot: Field,
+        taker_partial_note: PartialUintNote,
+        taker_slot: Field,
+    ) {
+        assert(!self.storage.resolution_outcome.is_initialized(), "MARKET_RESOLVED");
+
+        // Mint complete sets (1 YES + 1 NO per unit)
+        let current = self.storage.total_sets.read();
+        self.storage.total_sets.write(current + amount);
+
+        // Deliver shares to maker and taker via their partial notes
+        maker_partial_note.complete(
+            self.context,
+            self.context.this_address(),
+            maker_slot,
+            amount,
+        );
+        taker_partial_note.complete(
+            self.context,
+            self.context.this_address(),
+            taker_slot,
+            amount,
+        );
+
+        self.emit(OrderFilled { order_id });
+    }
+
+    // ---------------------------------------------------------------------------
+    // CLOB: Cancel Order
+    // ---------------------------------------------------------------------------
+
+    /// Cancel an open order and reclaim collateral.
+    /// Requires the cancel_secret whose Poseidon2 hash matches the order's cancel_hash.
+    /// Works even after market resolution (makers can always reclaim).
+    #[external("private")]
+    fn cancel_order(order_id: Field, cancel_secret: Field) {
+        let sender = self.msg_sender();
+        let token = self.storage.token.read();
+
+        // Read order
+        let order = self.storage.orders.at(order_id).read();
+
+        // Verify cancellation authority
+        let cancel_hash = Poseidon2::hash([cancel_secret], 1);
+        assert(cancel_hash == order.cancel_hash, "INVALID_CANCEL_SECRET");
+
+        // Nullify order -- blocks fill (same mechanism as take_order)
+        self.context.push_nullifier(order_id);
+
+        // Refund maker's collateral
+        let refund = (order.amount * order.price) / PRICE_PRECISION;
+        self.call(Token::at(token).transfer_public_to_private(
+            self.context.this_address(),
+            sender,
+            refund,
+            0,
+        ));
+
+        // Complete the dangling maker partial note with 0 to clean up
+        let maker_partial_note = PartialUintNote::from_field(order.maker_note);
+        let maker_slot = if order.is_buy_yes {
+            self.storage.yes_balances.get_storage_slot()
+        } else {
+            self.storage.no_balances.get_storage_slot()
+        };
+
+        self.enqueue_self._process_cancel(order_id, maker_partial_note, maker_slot);
+    }
+
+    #[only_self]
+    #[external("public")]
+    fn _process_cancel(
+        order_id: Field,
+        maker_partial_note: PartialUintNote,
+        maker_slot: Field,
+    ) {
+        // Complete the maker's partial note with 0 (harmless empty note)
+        maker_partial_note.complete(
+            self.context,
+            self.context.this_address(),
+            maker_slot,
+            0,
+        );
+
+        self.emit(OrderCancelled { order_id });
     }
 
     // ---------------------------------------------------------------------------
@@ -389,5 +645,13 @@ pub contract PredictionMarketZkTLS {
     #[external("utility")]
     unconstrained fn get_resolution_price() -> pub u128 {
         self.storage.resolution_price.read()
+    }
+
+    /// Returns order details and whether the order has been consumed (filled or cancelled).
+    #[external("utility")]
+    unconstrained fn get_order(order_id: Field) -> pub (Order, bool) {
+        let order = self.storage.orders.at(order_id).read();
+        let is_consumed = check_nullifier_exists(order_id);
+        (order, is_consumed)
     }
 }

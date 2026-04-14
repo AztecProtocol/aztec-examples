@@ -7,19 +7,25 @@
 pub global MAX_PLAINTEXT_LEN: u32 = 50;
 
 pub fn parse_price_cents(bytes: BoundedVec<u8, MAX_PLAINTEXT_LEN>) -> u128 {
+    assert(bytes.len() > 0, "EMPTY_PRICE");
+
     let mut integer_part: u128 = 0;
     let mut decimal_part: u128 = 0;
     let mut decimal_count: u32 = 0;
     let mut past_dot = false;
+    let mut dot_count: u32 = 0;
 
     for i in 0..MAX_PLAINTEXT_LEN {
         if i < bytes.len() {
             let b = bytes.storage()[i];
             if b == 46 {
-                // '.'
+                // '.' -- only one dot allowed
+                dot_count += 1;
+                assert(dot_count <= 1, "MULTIPLE_DOTS");
                 past_dot = true;
-            } else if (b >= 48) & (b <= 57) {
-                // '0'-'9'
+            } else {
+                // Only ASCII digits allowed; reject all other characters
+                assert((b >= 48) & (b <= 57), "INVALID_CHAR");
                 let digit = (b - 48) as u128;
                 if !past_dot {
                     integer_part = integer_part * 10 + digit;

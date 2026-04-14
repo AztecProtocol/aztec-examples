@@ -69,6 +69,7 @@ export interface ParsedAttestationData {
   contents: number[][];
   priceBytes: number[];
   priceConfirmBytes: number[];
+  timestamp: bigint;
 }
 
 // ---- Utility functions ----
@@ -218,6 +219,7 @@ export function parseAttestation(
     contents,
     priceBytes: Array.from(stringToBytes(String(priceValue))),
     priceConfirmBytes: Array.from(stringToBytes(String(priceConfirmValue))),
+    timestamp: BigInt(att.timestamp),
   };
 }
 

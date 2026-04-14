@@ -18,10 +18,10 @@
       "parsePath": "$.bitcoin.usd"
     }
   ],
-  "data": "{\"price\":\"67205\",\"price_confirm\":\"67205\"}",
+  "data": "{\"price\":\"66613\",\"price_confirm\":\"66613\"}",
   "attConditions": "[{\"op\":\"REVEAL_STRING\",\"field\":\"$.bitcoin.usd\"},{\"op\":\"REVEAL_STRING\",\"field\":\"$.bitcoin.usd\"}]",
-  "timestamp": 1775095801815,
-  "additionParams": "{\"algorithmType\":\"proxytls\"}",
+  "timestamp": 1775223381910,
+  "additionParams": "{\"algorithmType\":\"mpctls\"}",
   "attestors": [
     {
       "attestorAddr": "0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6",
@@ -29,6 +29,6 @@
     }
   ],
   "signatures": [
-    "0x7a82e440127590ab4fdd7771acdb4a5e8e3496899fecdb044c159cc405e1f878527c03467aa5e0405038400a2f501444b7b06b009718e3954bbb549bc8f46bac1b"
+    "0x762c49e4177c1dee4b5f4ad96b210b4c0f5039b3495baa3f0b7a6f473c3608ae290c3d9a42b6684a77245a8c83173b47343ed71928c130150d83ee1ccad6a12a1b"
   ]
 }
