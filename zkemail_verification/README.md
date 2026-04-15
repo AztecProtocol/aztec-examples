@@ -21,11 +21,11 @@ Successfully deployed and verified on the Aztec testnet (`https://rpc.testnet.az
 
 | Step | Transaction Hash |
 |------|-----------------|
-| Account deployment | `0x190a55042b4a4bd063150c0b1d2a233c07e8b4b7decb3ba57e2527c646acd2be` |
-| Contract deployment | `0x258f5c271e67ce681cf7db8641984d78d6e7718268d6cb4b9897d8ac624709bc` |
-| Email proof verification | `0x2c053bad6f58bfcdea0b2bc4b918e0e31bb3d38aed740ac836e227cd5b7bca4e` |
+| Account deployment | `0x11507f85ba674c2f47bb5bd71a6a039a43006bc44f84e835a0179b820d644eef` |
+| Contract deployment | `0x08cc244ad4363930ec56e273881c29748aeeb8cce6a710457a43811f379c9fd6` |
+| Email proof verification | `0x175b215e2c3bf3450c13f4494e9a099a2b2bad7eea0c9e55e659e38c65ae530b` |
 
-**Contract address**: `0x1bbf99d2acd54c9dc9ef58fd05892fec9d5916fa66949aead6877964879a142b`
+**Contract address**: `0x0f96d7850491bfe2983fb9cb7b4a77b843ad18fbfe763e776a79e2ec11cacf9f`
 
 ## How It Works
 
@@ -180,7 +180,7 @@ Ensure the circuit was compiled with `nargo compile` after any changes, then re-
 
 ## Dependencies
 
-- [zkemail.nr](https://github.com/zkemail/zkemail.nr) — Noir library for DKIM email verification
+- [zkemail.nr](https://github.com/critesjosh/zkemail.nr/tree/update/aztec-4.2.0-compat) — Noir library for DKIM email verification (Aztec 4.2.0 branch)
 - [aztec-nr](https://github.com/AztecProtocol/aztec-nr/) v4.2.0-aztecnr-rc.2 — Aztec smart contract framework
 - [bb_proof_verification](https://github.com/AztecProtocol/aztec-packages/) — Barretenberg proof verification for Aztec contracts
 - [@aztec/bb.js](https://www.npmjs.com/package/@aztec/bb.js) 4.2.0-aztecnr-rc.2 — UltraHonk proving backend

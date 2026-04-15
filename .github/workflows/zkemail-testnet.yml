@@ -1,0 +1,95 @@
+name: ZKEmail Testnet Verification
+
+on:
+  push:
+    branches:
+      - next
+  pull_request:
+    branches:
+      - next
+    paths:
+      - "zkemail_verification/**"
+      - ".github/workflows/zkemail-testnet.yml"
+  workflow_dispatch:
+
+jobs:
+  zkemail-testnet:
+    name: ZKEmail Proof Verification on Testnet
+    runs-on: ubuntu-latest
+    env:
+      AZTEC_VERSION: 4.2.0-aztecnr-rc.2
+      TESTNET_URL: https://rpc.testnet.aztec-labs.com
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "yarn"
+          cache-dependency-path: zkemail_verification/yarn.lock
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install Aztec CLI
+        run: |
+          INSTALL_URL="https://install.aztec.network/${{ env.AZTEC_VERSION }}/"
+          curl -sL $INSTALL_URL > tmp.sh
+          VERSION=${{ env.AZTEC_VERSION }} bash tmp.sh <<< yes "yes"
+
+      - name: Update path
+        run: |
+          echo "$HOME/.aztec/current/bin" >> $GITHUB_PATH
+          echo "$HOME/.aztec/current/node_modules/.bin" >> $GITHUB_PATH
+          echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+
+      - name: Install project dependencies
+        working-directory: zkemail_verification
+        run: yarn install --frozen-lockfile
+
+      - name: Compile Noir circuit
+        working-directory: zkemail_verification/circuit
+        run: nargo compile
+        timeout-minutes: 10
+
+      - name: Change ownership for nargo files
+        run: sudo chown -R $(whoami) ~/nargo || true
+
+      - name: Compile contract and generate artifacts
+        working-directory: zkemail_verification
+        run: |
+          ulimit -s unlimited
+          script -e -c "yarn ccc"
+        timeout-minutes: 15
+
+      - name: Generate proof data
+        working-directory: zkemail_verification
+        env:
+          BB_SINGLE_THREADED: "1"
+          HARDWARE_CONCURRENCY: "1"
+          NODE_OPTIONS: "--max-old-space-size=6144"
+        run: yarn data
+        timeout-minutes: 30
+
+      - name: Check testnet is reachable
+        run: |
+          echo "Checking testnet status..."
+          curl -sf ${{ env.TESTNET_URL }}/status || (echo "Testnet unreachable" && exit 1)
+          echo "Testnet is reachable"
+
+      - name: Deploy and verify on testnet
+        working-directory: zkemail_verification
+        run: yarn testnet
+        timeout-minutes: 20
+
+      - name: Upload proof data on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zkemail-testnet-logs
+          path: |
+            zkemail_verification/data.json
+          retention-days: 7
