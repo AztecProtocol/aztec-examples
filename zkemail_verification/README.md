@@ -1,59 +1,73 @@
-# Verify ZK Email Proofs in Aztec Contracts
+# ZK Email Auth for Aztec
 
-Proves that an email was sent from a specific domain (`icloud.com`) using DKIM signature verification in a Noir circuit, then verifies that proof on-chain inside an Aztec private smart contract.
+Proves email-based authorization using DKIM signature verification in a Noir circuit, then verifies that proof on-chain inside an Aztec private smart contract. Each email proof binds to a specific recipient, encodes an intent via the subject field, is single-use (nullifier), and must be fresh (timestamp check).
 
-Built to validate the [zkemail.nr](https://github.com/zkemail/zkemail.nr) library's compatibility with Aztec 4.2.0.
+Built with the [zkemail.nr](https://github.com/zkemail/zkemail.nr) library on Aztec 4.2.0.
 
-## Overview
+## Security Model
 
-This project implements:
+The contract enforces four constraints on each email proof:
 
-- **Noir Circuit** (`circuit/`): Verifies a 2048-bit RSA DKIM signature, checks the body hash, extracts the sender address, and asserts the sender domain is `icloud.com`. Returns three public outputs: two public key hashes (root of trust) and an email nullifier.
-- **Aztec Contract** (`contract/`): A private smart contract that verifies the Noir proof on-chain using `verify_honk_proof` and tracks a per-user verification count.
-- **Proof Generation** (`scripts/generate_data.ts`): Generates an UltraHonk proof from hardcoded test email data and verifies it off-chain before writing `data.json`.
-- **On-chain Verification** (`scripts/run_testnet.ts`): Deploys the contract and submits the proof for verification on the Aztec testnet.
+1. **Recipient binding** — The email's `to` address must hash to the `authorized_email_hash` stored at deployment. Only emails sent to the account owner's address are accepted.
+2. **Intent binding** — The email's `subject` field is hashed and compared against a caller-provided `expected_intent_hash`. This ties the email to a specific action (e.g., a Poseidon hash of calldata placed in the subject).
+3. **Single use** — The DKIM signature is hashed into a nullifier and pushed on-chain. Replaying the same email proof fails because the nullifier already exists.
+4. **Freshness** — The DKIM `t=` timestamp is extracted and checked in a public function against the block timestamp. Emails older than `max_email_age` seconds are rejected.
 
-**Aztec Version**: `4.2.0-aztecnr-rc.2` (compatible with testnet `4.2.0-rc.1`)
-
-## Testnet Deployment
-
-Successfully deployed and verified on the Aztec testnet (`https://rpc.testnet.aztec-labs.com`) with real proofs enabled.
-
-| Step | Transaction Hash |
-|------|-----------------|
-| Account deployment | `0x11507f85ba674c2f47bb5bd71a6a039a43006bc44f84e835a0179b820d644eef` |
-| Contract deployment | `0x08cc244ad4363930ec56e273881c29748aeeb8cce6a710457a43811f379c9fd6` |
-| Email proof verification | `0x175b215e2c3bf3450c13f4494e9a099a2b2bad7eea0c9e55e659e38c65ae530b` |
-
-**Contract address**: `0x0f96d7850491bfe2983fb9cb7b4a77b843ad18fbfe763e776a79e2ec11cacf9f`
+The sender's domain is also verified to be `icloud.com` via DKIM.
 
 ## How It Works
 
 ```
-Raw Email ──> [Noir Circuit] ──> UltraHonk Proof ──> [Aztec Contract] ──> On-chain Verification
-                  │                                        │
-                  │  DKIM verify                           │  verify_honk_proof()
-                  │  Body hash check                       │  Increment counter
-                  │  Domain = icloud.com                   │
-                  │                                        │
-                  └──> 3 public outputs:                   └──> VK hash stored in
-                       pubkey_hash[0]                           PublicImmutable storage
-                       pubkey_hash[1]
-                       email_nullifier
+                                  ┌──────────────────────────┐
+Raw Email ──> [Noir Circuit] ──>  │  6 public outputs:       │
+                  │               │  [0] pubkey_hash[0]      │
+                  │  DKIM verify  │  [1] pubkey_hash[1]      │
+                  │  from domain  │  [2] email_nullifier     │──> [Aztec Contract]
+                  │  to address   │  [3] to_address_hash     │        │
+                  │  subject      │  [4] intent_hash         │        │  verify_honk_proof()
+                  │  timestamp    │  [5] dkim_timestamp      │        │  check recipient
+                  │               └──────────────────────────┘        │  check intent
+                  │                                                   │  push nullifier
+                  │  Body verification omitted —                      │  check freshness
+                  │  all auth data is in DKIM-signed headers,         │
+                  │  avoiding extra SHA256 hashing cost               │
 ```
 
-1. The **inner circuit** (`circuit/src/main.nr`) uses the [zkemail.nr](https://github.com/zkemail/zkemail.nr) library to:
-   - Verify the DKIM RSA signature over the email header
-   - Extract and verify the body hash from the DKIM-Signature header against a SHA256 hash of the body
-   - Extract the sender email address from the `From:` header
-   - Assert the sender domain is `icloud.com`
-   - Output the public key hash (Poseidon), redc parameter hash, and email nullifier (Pedersen)
+### Circuit (`circuit/src/main.nr`)
 
-2. An **UltraHonk proof** is generated off-chain using Barretenberg (`@aztec/bb.js`), then verified off-chain to confirm validity.
+Uses [zkemail.nr](https://github.com/zkemail/zkemail.nr) to:
+- Verify the 2048-bit RSA DKIM signature over the email header
+- Extract and verify the sender domain is `icloud.com`
+- Extract the `to` address and output its Poseidon2 hash (identity binding)
+- Extract the `subject` field and output its Poseidon2 hash (intent binding)
+- Parse the `t=` tag from the DKIM-Signature header (timestamp for freshness)
+- Output a Poseidon2 hash of the DKIM signature as an email nullifier (replay prevention)
 
-3. The **Aztec contract** (`contract/src/main.nr`) calls `verify_honk_proof(vk, proof, public_inputs, vk_hash)` inside a private function. The VK hash is stored at deployment to bind the contract to the specific circuit. On successful verification, a public counter is incremented.
+Body verification is omitted since all authorization-relevant data lives in the DKIM-signed headers. This avoids the ~114K constraint SHA256 body hash computation.
 
-4. With `proverEnabled: true`, the PXE generates real ClientIVC proofs that enforce the `verify_honk_proof` constraint during private kernel execution — the inner proof is cryptographically verified, not skipped.
+### Contract (`contract/src/main.nr`)
+
+- `constructor(vk_hash, authorized_email_hash, max_email_age)` — Stores the verification key hash, the Poseidon2 hash of the authorized recipient email, and the maximum email age in seconds.
+- `verify_email(expected_intent_hash, vk, proof, public_inputs)` — **Private function** that:
+  1. Verifies the UltraHonk proof against the stored VK hash
+  2. Asserts `public_inputs[3]` (to address hash) matches `authorized_email_hash`
+  3. Asserts `public_inputs[4]` (subject hash) matches `expected_intent_hash`
+  4. Pushes `public_inputs[2]` (email nullifier) to prevent replay
+  5. Enqueues a public call to check `public_inputs[5]` (timestamp) is fresh
+- `_check_email_freshness(email_timestamp, max_age)` — **Public function** that checks `block.timestamp - email_timestamp <= max_age`
+- `get_authorized_email_hash()` — **View function** that returns the stored authorized email hash
+- `get_max_email_age()` — **View function** that returns the stored maximum email age
+
+### Intent Encoding
+
+The email subject serves as the intent field. For this example, the subject is hashed with Poseidon2 inside the circuit and output as `intent_hash`. To authorize an action:
+
+1. Compute `intent_hash = Poseidon2(pack_31(subject_bytes) ++ [subject_length])` off-chain
+2. Include the intent text as the email subject (e.g., a Poseidon hash of the calldata encoded as a string)
+3. The circuit hashes the subject and outputs it
+4. The contract verifies the proof's `intent_hash` matches the caller's `expected_intent_hash`
+
+For a production system, the subject would contain a Poseidon hash of the calldata — easier to parse in-circuit than ASCII text and supports arbitrary call data encoding.
 
 ## Prerequisites
 
@@ -74,10 +88,10 @@ nargo --version  # 1.0.0-beta.18
 ```
 .
 ├── circuit/                        # Inner Noir circuit (vanilla bin, not Aztec contract)
-│   ├── src/main.nr                # DKIM verify + domain check + public outputs
-│   └── Nargo.toml                 # Depends on zkemail.nr and sha256
+│   ├── src/main.nr                # DKIM verify + address/subject/timestamp extraction
+│   └── Nargo.toml                 # Depends on zkemail.nr
 ├── contract/                       # Aztec smart contract
-│   ├── src/main.nr                # verify_honk_proof + counter storage
+│   ├── src/main.nr                # verify_honk_proof + nullifier + timestamp check
 │   ├── artifacts/                 # Generated TypeScript bindings
 │   └── Nargo.toml                 # Depends on aztec-nr and bb_proof_verification
 ├── scripts/
@@ -109,12 +123,6 @@ yarn ccc
 yarn data
 ```
 
-### Deploy to Testnet
-
-```bash
-yarn testnet
-```
-
 ### Deploy to Local Network
 
 ```bash
@@ -128,41 +136,42 @@ yarn verify
 yarn test
 ```
 
+### Deploy to Testnet
+
+```bash
+yarn testnet
+```
+
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
 | `yarn ccc` | Compile Aztec contract + generate TypeScript bindings |
 | `yarn data` | Generate UltraHonk proof from test email data, verify off-chain, write `data.json` |
-| `yarn testnet` | Deploy contract and verify proof on the Aztec testnet |
 | `yarn verify` | Deploy contract and verify proof on local network |
+| `yarn testnet` | Deploy contract and verify proof on the Aztec testnet |
 | `yarn test` | Run Vitest integration tests against local network |
 
 ## Circuit Details
 
-The inner circuit verifies a DKIM-signed email from `icloud.com` using ~222K constraints:
+The inner circuit verifies a DKIM-signed email from `icloud.com` and extracts auth data from the headers:
 
-| Component | Constraints | Description |
-|-----------|------------|-------------|
-| DKIM signature verification | ~86,500 | RSA-2048 PKCS#1 v1.5 over SHA256 header hash |
-| Body hash (SHA256) | ~114,000 | SHA256 over email body, compared to DKIM `bh=` field |
-| Address extraction | ~16,000 | Extract and validate `From:` email address |
-| Domain check | ~100 | Assert domain bytes match `icloud.com` |
-| Key + nullifier hashing | ~10,200 | Poseidon hash of pubkey, Pedersen hash of signature |
+| Component | Description |
+|-----------|-------------|
+| DKIM signature verification | RSA-2048 PKCS#1 v1.5 over SHA256 header hash |
+| From address extraction | Extract sender email and verify domain is `icloud.com` |
+| To address hashing | Extract recipient email, Poseidon2 hash for identity binding |
+| Subject hashing | Extract subject field, Poseidon2 hash for intent binding |
+| Timestamp extraction | Parse `t=` tag from DKIM-Signature for freshness check |
+| Nullifier computation | Poseidon2 hash of DKIM signature for replay prevention |
 
-**Public outputs** (3 fields):
+**Public outputs** (6 fields):
 - `pubkey_hash[0]` — Poseidon hash of RSA modulus (root of trust)
 - `pubkey_hash[1]` — Poseidon hash of RSA redc parameter
-- `email_nullifier` — Pedersen hash of DKIM signature (prevents double-use)
-
-## Contract Details
-
-The `ZKEmailVerifier` contract stores a verification key hash at deployment and exposes:
-
-- `verify_email(owner, vk, proof, public_inputs)` — **private function** that verifies the UltraHonk proof and enqueues a public state update
-- `get_verification_count(owner)` — **public view** that returns how many emails have been verified for an address
-
-The contract uses the hybrid private/public execution pattern: proof verification happens privately (the email content is never revealed on-chain), while the verification count is updated publicly.
+- `email_nullifier` — Poseidon2 hash of DKIM signature (prevents replay)
+- `to_address_hash` — Poseidon2 hash of recipient email (identity binding)
+- `intent_hash` — Poseidon2 hash of subject content (intent binding)
+- `dkim_timestamp` — DKIM signing timestamp in seconds (freshness)
 
 ## Troubleshooting
 
@@ -172,15 +181,19 @@ Run `yarn ccc` to compile the contract and generate TypeScript bindings.
 **"Cannot find module '../data.json'"**
 Run `yarn data` to generate the proof data.
 
-**"Failed to connect" on testnet**
-Check testnet status: `curl https://rpc.testnet.aztec-labs.com/status`
+**"Email recipient does not match authorized address"**
+The `to` address in the email doesn't match the `authorized_email_hash` stored at deployment. Ensure the proof was generated with the correct test email.
 
-**Proof verification fails off-chain**
-Ensure the circuit was compiled with `nargo compile` after any changes, then re-run `yarn data`.
+**"Email has expired"**
+The DKIM timestamp is older than `max_email_age`. For testing with the hardcoded test email (April 2024), use a large `max_email_age` value.
+
+**"Duplicate nullifier"**
+The same email proof has already been used. Each email can only authorize one action.
 
 ## Dependencies
 
 - [zkemail.nr](https://github.com/critesjosh/zkemail.nr/tree/update/aztec-4.2.0-compat) — Noir library for DKIM email verification (Aztec 4.2.0 branch)
+- [poseidon](https://github.com/noir-lang/poseidon) v0.2.0 — Poseidon2 hash function for Noir
 - [aztec-nr](https://github.com/AztecProtocol/aztec-nr/) v4.2.0-aztecnr-rc.2 — Aztec smart contract framework
 - [bb_proof_verification](https://github.com/AztecProtocol/aztec-packages/) — Barretenberg proof verification for Aztec contracts
 - [@aztec/bb.js](https://www.npmjs.com/package/@aztec/bb.js) 4.2.0-aztecnr-rc.2 — UltraHonk proving backend

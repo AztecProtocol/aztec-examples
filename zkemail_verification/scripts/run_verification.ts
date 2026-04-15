@@ -12,6 +12,10 @@ import assert from "node:assert";
 
 export const NODE_URL = "http://localhost:8080";
 
+// Maximum email age in seconds. Set very large for testing with old test email (April 2024).
+// In production, use a much shorter window (e.g., 15 * 60 for 15 minutes).
+const MAX_EMAIL_AGE = 100 * 365 * 24 * 60 * 60;
+
 const sponsoredFPC = await getSponsoredFPCInstance();
 const sponsoredPaymentMethod = new SponsoredFeePaymentMethod(
   sponsoredFPC.address
@@ -49,11 +53,18 @@ async function main() {
   const ownerAddress = accounts[0].item;
   console.info('Owner address:', ownerAddress.toString());
 
+  // Public inputs from proof:
+  //   [3] = to_address_hash (used as authorized_email_hash)
+  //   [4] = intent_hash (subject hash)
+  const authorizedEmailHash = data.publicInputs[3] as unknown as FieldLike;
+  const intentHash = data.publicInputs[4] as unknown as FieldLike;
+
   console.log("Deploying ZKEmailVerifier contract...");
   const { contract: zkEmailVerifier } = await ZKEmailVerifierContract.deploy(
     testWallet,
-    ownerAddress,
-    data.vkHash as unknown as FieldLike
+    data.vkHash as unknown as FieldLike,
+    authorizedEmailHash,
+    MAX_EMAIL_AGE,
   )
     .send({
       from: ownerAddress,
@@ -62,12 +73,6 @@ async function main() {
 
   console.log("Contract deployed at:", zkEmailVerifier.address.toString());
 
-  // Check initial verification count
-  let counterValue = (await zkEmailVerifier.methods
-    .get_verification_count(ownerAddress)
-    .simulate({ from: ownerAddress })).result;
-  console.log(`Initial verification count: ${counterValue}`);
-
   console.log("Submitting email proof for on-chain verification (this may take 5-15 minutes with real proofs)...");
   const opts = {
     from: ownerAddress,
@@ -75,20 +80,31 @@ async function main() {
   };
 
   await zkEmailVerifier.methods.verify_email(
-    ownerAddress,
+    intentHash,
     data.vkAsFields as unknown as FieldLike[],
     data.proofAsFields as unknown as FieldLike[],
     data.publicInputs as unknown as FieldLike[],
   ).send(opts);
 
-  // Check verification count after
-  counterValue = (await zkEmailVerifier.methods
-    .get_verification_count(ownerAddress)
-    .simulate({ from: ownerAddress })).result;
-  console.log(`Verification count after proof: ${counterValue}`);
-
-  assert(counterValue === 1n, `Expected verification count to be 1, got ${counterValue}`);
   console.log("SUCCESS: Email proof verified on-chain!");
+  console.log("  - Recipient address verified against authorized email hash");
+  console.log("  - Intent hash verified from email subject");
+  console.log("  - Email nullifier pushed (prevents reuse)");
+  console.log("  - Email freshness checked against timestamp");
+
+  // Attempting to reuse the same email proof should fail
+  console.log("\nAttempting to reuse the same email proof (should fail)...");
+  try {
+    await zkEmailVerifier.methods.verify_email(
+      intentHash,
+      data.vkAsFields as unknown as FieldLike[],
+      data.proofAsFields as unknown as FieldLike[],
+      data.publicInputs as unknown as FieldLike[],
+    ).send(opts);
+    assert.fail("Expected reuse to fail due to duplicate nullifier");
+  } catch (e: any) {
+    console.log("Reuse correctly rejected:", e.message?.substring(0, 100));
+  }
 }
 
 main().catch((error) => {

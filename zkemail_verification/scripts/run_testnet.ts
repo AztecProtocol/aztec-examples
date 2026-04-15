@@ -12,6 +12,10 @@ import assert from "node:assert";
 
 const TESTNET_URL = "https://rpc.testnet.aztec-labs.com";
 
+// Maximum email age in seconds. Set very large for testing with old test email (April 2024).
+// In production, use a much shorter window (e.g., 15 * 60 for 15 minutes).
+const MAX_EMAIL_AGE = 100 * 365 * 24 * 60 * 60;
+
 const sponsoredFPC = await getSponsoredFPCInstance();
 const sponsoredPaymentMethod = new SponsoredFeePaymentMethod(
   sponsoredFPC.address
@@ -51,24 +55,25 @@ async function main() {
     fee: { paymentMethod: sponsoredPaymentMethod },
   };
 
+  // Public inputs from proof:
+  //   [3] = to_address_hash (used as authorized_email_hash)
+  //   [4] = intent_hash (subject hash)
+  const authorizedEmailHash = data.publicInputs[3] as unknown as FieldLike;
+  const intentHash = data.publicInputs[4] as unknown as FieldLike;
+
   console.log("Deploying ZKEmailVerifier contract...");
   const { contract: zkEmailVerifier } = await ZKEmailVerifierContract.deploy(
     testWallet,
-    ownerAddress,
-    data.vkHash as unknown as FieldLike
+    data.vkHash as unknown as FieldLike,
+    authorizedEmailHash,
+    MAX_EMAIL_AGE,
   ).send(sendOpts);
 
   console.log(`Contract deployed at: ${zkEmailVerifier.address.toString()}`);
 
-  // Check initial verification count
-  let counterValue = (await zkEmailVerifier.methods
-    .get_verification_count(ownerAddress)
-    .simulate({ from: ownerAddress })).result;
-  console.log(`Initial verification count: ${counterValue}`);
-
   console.log("Submitting ZK email proof for on-chain verification...");
   const { receipt: tx } = await zkEmailVerifier.methods.verify_email(
-    ownerAddress,
+    intentHash,
     data.vkAsFields as unknown as FieldLike[],
     data.proofAsFields as unknown as FieldLike[],
     data.publicInputs as unknown as FieldLike[],
@@ -77,14 +82,11 @@ async function main() {
   console.log(`Transaction hash: ${tx.txHash.toString()}`);
   console.log(`Transaction status: ${tx.status}`);
 
-  // Read verification count
-  counterValue = (await zkEmailVerifier.methods
-    .get_verification_count(ownerAddress)
-    .simulate({ from: ownerAddress })).result;
-  console.log(`Verification count after proof: ${counterValue}`);
-
-  assert(counterValue === 1n, `Expected verification count 1, got ${counterValue}`);
   console.log("SUCCESS: ZK email proof verified on Aztec testnet!");
+  console.log("  - Recipient address verified against authorized email hash");
+  console.log("  - Intent hash verified from email subject");
+  console.log("  - Email nullifier pushed (prevents reuse)");
+  console.log("  - Email freshness checked against timestamp");
 
   await testWallet.stop();
 }

@@ -15,11 +15,21 @@ import data from '../data.json'
 const NODE_URL = 'http://localhost:8080'
 const TEST_TIMEOUT = 1200000 // 20 minutes
 
+// Maximum email age in seconds. Set very large for testing with old test email (April 2024).
+// In production, use a much shorter window (e.g., 15 * 60 for 15 minutes).
+const MAX_EMAIL_AGE = 100 * 365 * 24 * 60 * 60;
+
 describe("ZKEmail Verification", () => {
   let testWallet: EmbeddedWallet
   let ownerAddress: AztecAddress
   let zkEmailVerifierContract: ZKEmailVerifierContract
   let sponsoredPaymentMethod: SponsoredFeePaymentMethod
+
+  // Public inputs from proof:
+  //   [3] = to_address_hash (authorized email hash)
+  //   [4] = intent_hash (subject hash)
+  const authorizedEmailHash = data.publicInputs[3] as unknown as FieldLike
+  const intentHash = data.publicInputs[4] as unknown as FieldLike
 
   beforeAll(async () => {
     console.log(`Connecting to Aztec Node at ${NODE_URL}`)
@@ -58,7 +68,7 @@ describe("ZKEmail Verification", () => {
     }
   })
 
-  test("should deploy ZKEmailVerifier contract", async () => {
+  test("should deploy ZKEmailVerifier contract with authorized email and max age", async () => {
     const sendOpts = {
       from: ownerAddress,
       fee: { paymentMethod: sponsoredPaymentMethod },
@@ -66,8 +76,9 @@ describe("ZKEmail Verification", () => {
 
     ;({ contract: zkEmailVerifierContract } = await ZKEmailVerifierContract.deploy(
       testWallet,
-      ownerAddress,
-      data.vkHash as unknown as FieldLike
+      data.vkHash as unknown as FieldLike,
+      authorizedEmailHash,
+      MAX_EMAIL_AGE,
     )
       .send(sendOpts))
 
@@ -77,7 +88,7 @@ describe("ZKEmail Verification", () => {
     console.log("Contract deployed at address:", zkEmailVerifierContract.address.toString())
   }, TEST_TIMEOUT)
 
-  test("should verify email proof and increment verification count", async () => {
+  test("should verify email proof with correct intent and recipient", async () => {
     const sendOpts = {
       from: ownerAddress,
       fee: { paymentMethod: sponsoredPaymentMethod },
@@ -85,7 +96,7 @@ describe("ZKEmail Verification", () => {
 
     console.log("Submitting email proof for on-chain verification...")
     const { receipt: tx } = await zkEmailVerifierContract.methods.verify_email(
-      ownerAddress,
+      intentHash,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
@@ -96,37 +107,54 @@ describe("ZKEmail Verification", () => {
 
     console.log(`Transaction hash: ${tx.txHash.toString()}`)
     console.log(`Transaction status: ${tx.status}`)
+    console.log("Email proof verified — nullifier pushed, timestamp checked")
   }, TEST_TIMEOUT)
 
-  test("should read verification count", async () => {
-    const { result: counterValue } = await zkEmailVerifierContract.methods.get_verification_count(
-      ownerAddress
-    ).simulate({ from: ownerAddress })
-
-    expect(counterValue).toBe(1n)
-    console.log(`Verification count: ${counterValue}`)
-  }, TEST_TIMEOUT)
-
-  test("should verify same proof again and increment count to 2", async () => {
+  test("should reject reuse of the same email proof (nullifier prevents replay)", async () => {
     const sendOpts = {
       from: ownerAddress,
       fee: { paymentMethod: sponsoredPaymentMethod },
     }
 
-    const { receipt: tx } = await zkEmailVerifierContract.methods.verify_email(
-      ownerAddress,
-      data.vkAsFields as unknown as FieldLike[],
-      data.proofAsFields as unknown as FieldLike[],
-      data.publicInputs as unknown as FieldLike[],
-    ).send(sendOpts)
-    expect(tx).toBeDefined()
-    expect(tx.executionResult).toBe(TxExecutionResult.SUCCESS)
+    console.log("Attempting to reuse the same email proof (should fail due to duplicate nullifier)...")
+    await expect(
+      zkEmailVerifierContract.methods.verify_email(
+        intentHash,
+        data.vkAsFields as unknown as FieldLike[],
+        data.proofAsFields as unknown as FieldLike[],
+        data.publicInputs as unknown as FieldLike[],
+      ).send(sendOpts)
+    ).rejects.toThrow()
 
-    const { result: counterValue } = await zkEmailVerifierContract.methods.get_verification_count(
-      ownerAddress
-    ).simulate({ from: ownerAddress })
+    console.log("Replay correctly rejected — email nullifier prevents reuse")
+  }, TEST_TIMEOUT)
 
-    expect(counterValue).toBe(2n)
-    console.log(`Verification count after second proof: ${counterValue}`)
+  test("should reject email proof with wrong intent hash", async () => {
+    const sendOpts = {
+      from: ownerAddress,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    }
+
+    const wrongIntentHash = Fr.random() as unknown as FieldLike
+
+    console.log("Submitting proof with wrong intent hash (should fail)...")
+    await expect(
+      zkEmailVerifierContract.methods.verify_email(
+        wrongIntentHash,
+        data.vkAsFields as unknown as FieldLike[],
+        data.proofAsFields as unknown as FieldLike[],
+        data.publicInputs as unknown as FieldLike[],
+      ).send(sendOpts)
+    ).rejects.toThrow()
+
+    console.log("Wrong intent hash correctly rejected")
+  }, TEST_TIMEOUT)
+
+  test("should read stored authorized email hash", async () => {
+    const { result: storedHash } = await zkEmailVerifierContract.methods.get_authorized_email_hash()
+      .simulate({ from: ownerAddress })
+
+    expect(storedHash).toBe(BigInt(data.publicInputs[3]))
+    console.log(`Stored authorized email hash: ${storedHash}`)
   }, TEST_TIMEOUT)
 })

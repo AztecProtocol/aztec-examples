@@ -7,6 +7,9 @@ import { exit } from 'process';
 // =============================================================================
 // Test data from zkemail.nr/lib/src/tests/test_inputs.nr (EmailLarge module)
 // Email from: runnier.leagues.0j@icloud.com
+// Email to: zkewtest@gmail.com
+// Subject: Bitcoin
+// DKIM timestamp: 1712141644
 // =============================================================================
 
 const HEADER_BYTES = [
@@ -33,47 +36,6 @@ const HEADER_BYTES = [
   58, 67, 111, 110, 116, 101, 110, 116, 45, 84, 121, 112, 101, 58, 77, 105, 109, 101, 45, 86,
   101, 114, 115, 105, 111, 110, 58, 83, 117, 98, 106, 101, 99, 116, 58, 77, 101, 115, 115, 97,
   103, 101, 45, 73, 100, 58, 68, 97, 116, 101, 58, 116, 111, 59, 32, 98, 61,
-];
-
-const BODY_BYTES = [
-  84, 104, 101, 32, 84, 105, 109, 101, 115, 32, 48, 51, 47, 74, 97, 110, 47, 50, 48, 48, 57,
-  32, 67, 104, 97, 110, 99, 101, 108, 108, 111, 114, 32, 111, 110, 32, 98, 114, 105, 110, 107,
-  32, 111, 102, 32, 115, 101, 99, 111, 110, 100, 32, 98, 97, 105, 108, 111, 117, 116, 32, 102,
-  111, 114, 32, 98, 97, 110, 107, 115, 13, 10, 13, 10, 49, 53, 32, 121, 101, 97, 114, 115, 32,
-  97, 103, 111, 44, 32, 83, 97, 116, 111, 115, 104, 105, 32, 109, 105, 110, 101, 100, 32, 116,
-  104, 101, 32, 102, 105, 114, 115, 116, 32, 98, 108, 111, 99, 107, 32, 111, 102, 32, 116,
-  104, 101, 32, 66, 105, 116, 99, 111, 105, 110, 32, 98, 108, 111, 99, 107, 99, 104, 97, 105,
-  110, 32, 61, 13, 10, 65, 102, 116, 101, 114, 32, 116, 104, 101, 32, 66, 105, 116, 99, 111,
-  105, 110, 32, 119, 104, 105, 116, 101, 32, 112, 97, 112, 101, 114, 32, 97, 112, 112, 101,
-  97, 114, 101, 100, 32, 111, 110, 32, 79, 99, 116, 111, 98, 101, 114, 32, 51, 49, 44, 32, 50,
-  48, 48, 56, 44, 32, 111, 110, 32, 97, 32, 61, 13, 10, 99, 114, 121, 112, 116, 111, 103, 114,
-  97, 112, 104, 121, 32, 109, 97, 105, 108, 105, 110, 103, 32, 108, 105, 115, 116, 44, 32,
-  116, 104, 101, 32, 71, 101, 110, 101, 115, 105, 115, 32, 66, 108, 111, 99, 107, 32, 61, 69,
-  50, 61, 56, 48, 61, 57, 52, 32, 116, 104, 101, 32, 102, 105, 114, 115, 116, 32, 98, 105,
-  116, 99, 111, 105, 110, 32, 61, 13, 10, 98, 108, 111, 99, 107, 32, 97, 110, 100, 32, 116,
-  104, 101, 32, 98, 97, 115, 105, 115, 32, 111, 102, 32, 116, 104, 101, 32, 101, 110, 116,
-  105, 114, 101, 32, 66, 105, 116, 99, 111, 105, 110, 32, 116, 114, 97, 100, 105, 110, 103,
-  32, 115, 121, 115, 116, 101, 109, 32, 105, 110, 32, 112, 108, 97, 99, 101, 32, 116, 111, 32,
-  61, 13, 10, 116, 104, 105, 115, 32, 100, 97, 121, 32, 61, 69, 50, 61, 56, 48, 61, 57, 52,
-  32, 119, 97, 115, 32, 109, 105, 110, 101, 100, 32, 111, 110, 32, 74, 97, 110, 117, 97, 114,
-  121, 32, 51, 44, 32, 50, 48, 48, 57, 46, 61, 50, 48, 13, 10, 13, 10, 84, 104, 101, 32, 71,
-  101, 110, 101, 115, 105, 115, 32, 66, 108, 111, 99, 107, 32, 105, 115, 32, 97, 108, 115,
-  111, 32, 107, 110, 111, 119, 110, 32, 97, 115, 32, 66, 108, 111, 99, 107, 32, 48, 32, 111,
-  114, 32, 66, 108, 111, 99, 107, 32, 49, 44, 32, 97, 110, 100, 32, 105, 115, 32, 115, 116,
-  105, 108, 108, 32, 105, 110, 32, 61, 13, 10, 116, 104, 101, 32, 66, 105, 116, 99, 111, 105,
-  110, 32, 110, 101, 116, 119, 111, 114, 107, 44, 32, 119, 104, 101, 114, 101, 32, 105, 116,
-  32, 119, 105, 108, 108, 32, 114, 101, 109, 97, 105, 110, 32, 97, 115, 32, 108, 111, 110,
-  103, 32, 97, 115, 32, 116, 104, 101, 114, 101, 32, 105, 115, 32, 97, 32, 99, 111, 109, 112,
-  117, 116, 101, 114, 32, 61, 13, 10, 114, 117, 110, 110, 105, 110, 103, 32, 116, 104, 101,
-  32, 66, 105, 116, 99, 111, 105, 110, 32, 115, 111, 102, 116, 119, 97, 114, 101, 46, 61, 50,
-  48, 13, 10, 13, 10, 65, 108, 108, 32, 110, 111, 100, 101, 115, 32, 105, 110, 32, 116, 104,
-  101, 32, 66, 105, 116, 99, 111, 105, 110, 32, 110, 101, 116, 119, 111, 114, 107, 32, 99, 97,
-  110, 32, 99, 111, 110, 115, 117, 108, 116, 32, 105, 116, 44, 32, 101, 118, 101, 110, 32,
-  105, 102, 32, 105, 116, 32, 105, 115, 32, 97, 116, 32, 116, 104, 101, 32, 61, 13, 10, 111,
-  116, 104, 101, 114, 32, 101, 110, 100, 32, 111, 102, 32, 116, 104, 101, 32, 110, 101, 116,
-  119, 111, 114, 107, 32, 119, 105, 116, 104, 32, 104, 117, 110, 100, 114, 101, 100, 115, 32,
-  111, 102, 32, 116, 104, 111, 117, 115, 97, 110, 100, 115, 32, 111, 102, 32, 98, 108, 111,
-  99, 107, 115, 46, 13, 10,
 ];
 
 // RSA public key modulus limbs (18 x 120-bit)
@@ -143,16 +105,95 @@ const SIGNATURE_LIMBS = [
 ];
 
 const MAX_HEADER_LENGTH = 512;
-const MAX_BODY_LENGTH = 1024;
+
+// =============================================================================
+// Compute header field positions programmatically
+// =============================================================================
+
+function findHeaderField(headerBytes: number[], fieldName: string): { index: number; length: number } {
+  const nameBytes = Array.from(fieldName).map(c => c.charCodeAt(0));
+  const colon = 58; // ':'
+  const cr = 13;    // '\r'
+  const lf = 10;    // '\n'
+
+  for (let i = 0; i < headerBytes.length; i++) {
+    // Check start-of-line: either i==0 or preceded by \r\n
+    const atLineStart = i === 0 || (i >= 2 && headerBytes[i - 2] === cr && headerBytes[i - 1] === lf);
+    if (!atLineStart) continue;
+
+    // Check field name match
+    let match = true;
+    for (let j = 0; j < nameBytes.length; j++) {
+      if (headerBytes[i + j] !== nameBytes[j]) { match = false; break; }
+    }
+    if (!match || headerBytes[i + nameBytes.length] !== colon) continue;
+
+    // Find end of field (next \r\n)
+    let end = i + nameBytes.length + 1;
+    while (end < headerBytes.length - 1 && !(headerBytes[end] === cr && headerBytes[end + 1] === lf)) {
+      end++;
+    }
+    return { index: i, length: end - i };
+  }
+  throw new Error(`Header field "${fieldName}" not found`);
+}
+
+function findEmailAddressInField(headerBytes: number[], fieldSeq: { index: number; length: number }, fieldName: string): { index: number; length: number } {
+  // Address starts after "fieldname:"
+  const valueStart = fieldSeq.index + fieldName.length + 1;
+  const valueEnd = fieldSeq.index + fieldSeq.length;
+
+  // Check for angle-bracket format: "Display Name <addr>"
+  let addrStart = valueStart;
+  let addrEnd = valueEnd;
+  for (let i = valueStart; i < valueEnd; i++) {
+    if (headerBytes[i] === 60) addrStart = i + 1; // '<'
+    if (headerBytes[i] === 62) addrEnd = i;        // '>'
+  }
+  return { index: addrStart, length: addrEnd - addrStart };
+}
+
+function findDkimTimestampIndex(headerBytes: number[], dkimSeq: { index: number; length: number }): number {
+  // Search for "; t=" or " t=" within the DKIM header field
+  const dkimEnd = dkimSeq.index + dkimSeq.length;
+  for (let i = dkimSeq.index; i < dkimEnd - 2; i++) {
+    if (headerBytes[i] === 116 && headerBytes[i + 1] === 61) { // 't' '='
+      // Verify preceded by '; ' or ' '
+      if (i > 0 && (headerBytes[i - 1] === 32 || headerBytes[i - 1] === 59)) {
+        // Verify followed by a digit
+        if (headerBytes[i + 2] >= 48 && headerBytes[i + 2] <= 57) {
+          return i + 2; // index of first digit
+        }
+      }
+    }
+  }
+  throw new Error("DKIM timestamp (t=) tag not found in DKIM-Signature header");
+}
+
+// Compute all header field positions
+const fromSeq = findHeaderField(HEADER_BYTES, "from");
+const fromAddrSeq = findEmailAddressInField(HEADER_BYTES, fromSeq, "from");
+const toSeq = findHeaderField(HEADER_BYTES, "to");
+const toAddrSeq = findEmailAddressInField(HEADER_BYTES, toSeq, "to");
+const subjectSeq = findHeaderField(HEADER_BYTES, "subject");
+const dkimSeq = findHeaderField(HEADER_BYTES, "dkim-signature");
+const dkimTimestampIndex = findDkimTimestampIndex(HEADER_BYTES, dkimSeq);
+
+console.log("Header field positions:");
+console.log(`  from: index=${fromSeq.index}, length=${fromSeq.length}`);
+console.log(`  from address: index=${fromAddrSeq.index}, length=${fromAddrSeq.length} (${String.fromCharCode(...HEADER_BYTES.slice(fromAddrSeq.index, fromAddrSeq.index + fromAddrSeq.length))})`);
+console.log(`  to: index=${toSeq.index}, length=${toSeq.length}`);
+console.log(`  to address: index=${toAddrSeq.index}, length=${toAddrSeq.length} (${String.fromCharCode(...HEADER_BYTES.slice(toAddrSeq.index, toAddrSeq.index + toAddrSeq.length))})`);
+console.log(`  subject: index=${subjectSeq.index}, length=${subjectSeq.length} (${String.fromCharCode(...HEADER_BYTES.slice(subjectSeq.index + 8, subjectSeq.index + subjectSeq.length))})`);
+console.log(`  dkim: index=${dkimSeq.index}, length=${dkimSeq.length}`);
+console.log(`  dkim timestamp digit start: index=${dkimTimestampIndex}`);
 
 // =============================================================================
 // Build circuit inputs
 // =============================================================================
 
-// Pad arrays to max length with zeros
 function padArray(arr: number[], maxLen: number): string[] {
-  const padded = [...arr.map(b => b.toString()), ...Array(maxLen - arr.length).fill("0")];
-  return padded;
+  return [...arr.map(b => b.toString()), ...Array(maxLen - arr.length).fill("0")];
 }
 
 const inputs = {
@@ -160,19 +201,18 @@ const inputs = {
     storage: padArray(HEADER_BYTES, MAX_HEADER_LENGTH),
     len: HEADER_BYTES.length.toString(),
   },
-  body: {
-    storage: padArray(BODY_BYTES, MAX_BODY_LENGTH),
-    len: BODY_BYTES.length.toString(),
-  },
   pubkey: {
     modulus: MODULUS_LIMBS,
     redc: REDC_LIMBS,
   },
   signature: SIGNATURE_LIMBS,
-  body_hash_index: "361",
-  dkim_header_sequence: { index: "267", length: "203" },
-  from_header_sequence: { index: "0", length: "34" },
-  from_address_sequence: { index: "5", length: "29" },
+  dkim_header_sequence: { index: dkimSeq.index.toString(), length: dkimSeq.length.toString() },
+  from_header_sequence: { index: fromSeq.index.toString(), length: fromSeq.length.toString() },
+  from_address_sequence: { index: fromAddrSeq.index.toString(), length: fromAddrSeq.length.toString() },
+  to_header_sequence: { index: toSeq.index.toString(), length: toSeq.length.toString() },
+  to_address_sequence: { index: toAddrSeq.index.toString(), length: toAddrSeq.length.toString() },
+  subject_header_sequence: { index: subjectSeq.index.toString(), length: subjectSeq.length.toString() },
+  dkim_timestamp_index: dkimTimestampIndex.toString(),
 };
 
 // =============================================================================
@@ -227,6 +267,15 @@ const vkAsFields = recursiveArtifacts.vkAsFields;
 console.log(`VK size: ${vkAsFields.length}`);
 console.log(`Proof size: ${proofAsFields.length}`);
 console.log(`Public inputs: ${proofData.publicInputs.length}`);
+
+// Log public input meanings
+console.log("\nPublic inputs breakdown:");
+console.log(`  [0] pubkey_hash[0]:   ${proofData.publicInputs[0]}`);
+console.log(`  [1] pubkey_hash[1]:   ${proofData.publicInputs[1]}`);
+console.log(`  [2] email_nullifier:  ${proofData.publicInputs[2]}`);
+console.log(`  [3] to_address_hash:  ${proofData.publicInputs[3]}`);
+console.log(`  [4] intent_hash:      ${proofData.publicInputs[4]}`);
+console.log(`  [5] dkim_timestamp:   ${proofData.publicInputs[5]}`);
 
 // Write data.json
 const data = {
