@@ -45,9 +45,15 @@ At Aztec v4.2.0, `UintNote::partial()` samples randomness internally via the ora
 
 ### Privacy Tradeoffs
 
-- **Bob's deposit is public.** Observers can see how much Bob deposited and when funds are consumed.
-- **Carol's identity is hidden.** The partial note commitment hides her address.
-- **The claim amount is public.** The partial note is completed in public, so the amount is visible.
+**What stays private:**
+- **The email is never revealed onchain.** The zkEmail proof attests to properties of the email (sender, recipient, subject, timestamp) without exposing the raw headers or body. Observers see only hashes and the proof.
+- **Carol's identity is hidden.** The partial note commitment hides her address. Observers cannot determine who received the tokens.
+
+**What is public:**
+- **Bob's deposit and balance.** The `deposit()` call and the `deposits` map are public state. Observers can see how much Bob deposited, his email address hash, and when funds are deducted.
+- **Bob's email address hash is linkable.** The `from_address_hash` is stored in public state and passed through `_complete`. Anyone who knows (or guesses) Bob's email address can compute the hash and confirm he is the depositor.
+- **The claim amount is visible.** The partial note is completed in `_complete` (a public function), so the transfer amount is onchain.
+- **Deposit-to-claim linkage.** An observer can see that a specific deposit balance was deducted in the same transaction that completed a partial note, linking the funding source to the claim event -- even though Carol's identity remains hidden.
 
 ## Architecture
 
