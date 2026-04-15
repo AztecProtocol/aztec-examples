@@ -22,9 +22,10 @@ global EXPECTED_DOMAIN: [u8; 10] = comptime { "icloud.com".as_bytes() };
 ///   [0]: Poseidon hash of DKIM public key modulus (root of trust)
 ///   [1]: Poseidon hash of DKIM public key redc parameter
 ///   [2]: Email nullifier (Poseidon2 hash of DKIM signature -- prevents replay)
-///   [3]: Poseidon2 hash of recipient (to) email address (identity binding)
-///   [4]: Poseidon2 hash of email subject (intent binding)
-///   [5]: DKIM signing timestamp in seconds since epoch (freshness)
+///   [3]: Poseidon2 hash of sender (from) email address (depositor identification)
+///   [4]: Poseidon2 hash of recipient (to) email address (recipient binding)
+///   [5]: Poseidon2 hash of email subject (intent binding)
+///   [6]: DKIM signing timestamp in seconds since epoch (freshness)
 fn main(
     header: BoundedVec<u8, MAX_EMAIL_HEADER_LENGTH>,
     pubkey: RSAPubkey<KEY_LIMBS_2048>,
@@ -36,15 +37,17 @@ fn main(
     to_address_sequence: Sequence,
     subject_header_sequence: Sequence,
     dkim_timestamp_index: u32,
-) -> pub [Field; 6] {
+) -> pub [Field; 7] {
     assert(header.len() <= MAX_EMAIL_HEADER_LENGTH);
 
     // 1. Verify the DKIM signature over the email header
     let _ = pubkey.verify_dkim_signature(header, signature);
 
-    // 2. Extract and verify the sender's domain is icloud.com
-    //    The header input must be DKIM-canonicalized (c=relaxed), which lowercases
-    //    field names. All field name comparisons below use lowercase literals.
+    // 2. Extract and verify the sender's domain is icloud.com, then hash the full address.
+    //    The domain check restricts which mail servers are trusted. The full address hash
+    //    identifies the specific sender (e.g. bob@icloud.com) for deposit lookup.
+    //    NOTE: Header field names are matched in lowercase. This assumes DKIM
+    //    c=relaxed canonicalization, which lowercases header names before signing.
     let from_address: BoundedVec<u8, MAX_EMAIL_ADDRESS_LENGTH> = get_email_address(
         header,
         from_header_sequence,
@@ -52,8 +55,9 @@ fn main(
         comptime { "from".as_bytes() },
     );
     verify_domain(from_address, EXPECTED_DOMAIN);
+    let from_address_hash = hash_address(from_address);
 
-    // 3. Extract recipient (to) address and hash for identity binding
+    // 3. Extract recipient (to) address and hash for recipient binding
     let to_address: BoundedVec<u8, MAX_EMAIL_ADDRESS_LENGTH> = get_email_address(
         header,
         to_header_sequence,
@@ -72,7 +76,7 @@ fn main(
     let email_nullifier = Poseidon2::hash(signature, KEY_LIMBS_2048);
     let pubkey_hash = pubkey.hash();
 
-    [pubkey_hash[0], pubkey_hash[1], email_nullifier, to_address_hash, intent_hash, timestamp]
+    [pubkey_hash[0], pubkey_hash[1], email_nullifier, from_address_hash, to_address_hash, intent_hash, timestamp]
 }
 
 /// Verify the domain part of an email address matches the expected domain.
@@ -203,10 +207,14 @@ fn extract_dkim_timestamp(
         "Expected '=' before timestamp value",
     );
 
-    // Parse decimal digits until non-digit (';' or end of header field)
-    let mut timestamp: Field = 0;
+    // Parse decimal digits until non-digit (';' or end of header field).
+    // The first byte must be a digit to prevent parsing an empty t= value as 0.
+    let first_byte = header.get_unchecked(timestamp_index);
+    assert((first_byte >= 48) & (first_byte <= 57), "Timestamp must start with a digit");
+
+    let mut timestamp: Field = (first_byte - 48) as Field;
     let mut done = false;
-    for i in 0..MAX_TIMESTAMP_DIGITS {
+    for i in 1..MAX_TIMESTAMP_DIGITS {
         if !done {
             let byte = header.get_unchecked(timestamp_index + i);
             if (byte >= 48) & (byte <= 57) {

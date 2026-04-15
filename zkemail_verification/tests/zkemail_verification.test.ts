@@ -8,7 +8,8 @@ import { createAztecNodeClient } from "@aztec/aztec.js/node"
 import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
 import { EmbeddedWallet } from "@aztec/wallets/embedded"
 import { SponsoredFPCContract } from "@aztec/noir-contracts.js/SponsoredFPC"
-import { ZKEmailVerifierContract } from '../contract/artifacts/ZKEmailVerifier'
+import { TokenContract } from "@aztec/noir-contracts.js/Token"
+import { EmailClaimContract } from '../contract/artifacts/EmailClaim'
 import { getSponsoredFPCInstance } from '../scripts/sponsored_fpc'
 import data from '../data.json'
 
@@ -17,53 +18,62 @@ const TEST_TIMEOUT = 1200000 // 20 minutes
 
 // Maximum email age in seconds. Set very large for testing with old test email (April 2024).
 // In production, use a much shorter window (e.g., 15 * 60 for 15 minutes).
-const MAX_EMAIL_AGE = 100 * 365 * 24 * 60 * 60;
+const MAX_EMAIL_AGE = 100 * 365 * 24 * 60 * 60
+const DEPOSIT_AMOUNT = 500n
+const CLAIM_AMOUNT = 100n
 
-describe("ZKEmail Verification", () => {
+describe("ZKEmail Offchain Transfer", () => {
   let testWallet: EmbeddedWallet
-  let ownerAddress: AztecAddress
-  let zkEmailVerifierContract: ZKEmailVerifierContract
+  let bobAddress: AztecAddress
+  let carolAddress: AztecAddress
+  let token: TokenContract
+  let emailClaim: EmailClaimContract
   let sponsoredPaymentMethod: SponsoredFeePaymentMethod
 
-  // Public inputs from proof:
-  //   [0] = trusted DKIM pubkey hash (modulus)
-  //   [1] = trusted DKIM pubkey hash (redc)
-  //   [3] = to_address_hash (authorized email hash)
-  //   [4] = intent_hash (subject hash)
+  // Public inputs from proof
   const trustedDkimKeyHash0 = data.publicInputs[0] as unknown as FieldLike
   const trustedDkimKeyHash1 = data.publicInputs[1] as unknown as FieldLike
-  const authorizedEmailHash = data.publicInputs[3] as unknown as FieldLike
-  const intentHash = data.publicInputs[4] as unknown as FieldLike
+  const fromAddressHash = data.publicInputs[3] as unknown as FieldLike
+  const toAddressHash = data.publicInputs[4] as unknown as FieldLike
+  const intentHash = data.publicInputs[5] as unknown as FieldLike
+
+  const sendOpts = (from: AztecAddress) => ({
+    from,
+    fee: { paymentMethod: sponsoredPaymentMethod },
+  })
 
   beforeAll(async () => {
     console.log(`Connecting to Aztec Node at ${NODE_URL}`)
     const aztecNode = await createAztecNodeClient(NODE_URL)
-
     const sponsoredFPC = await getSponsoredFPCInstance()
     sponsoredPaymentMethod = new SponsoredFeePaymentMethod(sponsoredFPC.address)
 
-    // Create EmbeddedWallet with proverEnabled: true for real proof verification
     testWallet = await EmbeddedWallet.create(aztecNode, {
       pxeConfig: { proverEnabled: true },
       ephemeral: true,
     })
-
     await testWallet.registerContract(sponsoredFPC, SponsoredFPCContract.artifact)
-    console.log('EmbeddedWallet configured with proverEnabled: true')
 
-    console.log('Creating owner account...')
-    const ownerAccountManager = await testWallet.createSchnorrAccount(Fr.random(), Fr.random())
-    const ownerDeployMethod = await ownerAccountManager.getDeployMethod()
-    console.log('Deploying account (this may take a while with real proof generation)...')
-    await ownerDeployMethod.send({
+    // Create Bob and Carol accounts
+    console.log('Creating Bob account...')
+    const bobAccountManager = await testWallet.createSchnorrAccount(Fr.random(), Fr.random())
+    await (await bobAccountManager.getDeployMethod()).send({
       from: NO_FROM,
       fee: { paymentMethod: sponsoredPaymentMethod },
     })
-    console.log('Account deployed!')
+
+    console.log('Creating Carol account...')
+    const carolAccountManager = await testWallet.createSchnorrAccount(Fr.random(), Fr.random())
+    await (await carolAccountManager.getDeployMethod()).send({
+      from: NO_FROM,
+      fee: { paymentMethod: sponsoredPaymentMethod },
+    })
 
     const accounts = await testWallet.getAccounts()
-    ownerAddress = accounts[0].item
-    console.info('Owner address:', ownerAddress.toString())
+    bobAddress = accounts[0].item
+    carolAddress = accounts[1].item
+    console.log(`Bob:   ${bobAddress}`)
+    console.log(`Carol: ${carolAddress}`)
   }, TEST_TIMEOUT)
 
   afterAll(async () => {
@@ -72,95 +82,96 @@ describe("ZKEmail Verification", () => {
     }
   })
 
-  test("should deploy ZKEmailVerifier contract with authorized email and max age", async () => {
-    const sendOpts = {
-      from: ownerAddress,
-      fee: { paymentMethod: sponsoredPaymentMethod },
-    }
-
-    ;({ contract: zkEmailVerifierContract } = await ZKEmailVerifierContract.deploy(
+  test("should deploy Token and EmailClaim contracts", async () => {
+    // Deploy token
+    ;({ contract: token } = await TokenContract.deploy(
       testWallet,
+      bobAddress,
+      "TestToken",
+      "TT",
+      18,
+    ).send(sendOpts(bobAddress)))
+    expect(token.address.toString()).not.toBe("")
+
+    // Mint to Bob
+    await token.methods.mint_to_public(bobAddress, DEPOSIT_AMOUNT).send(sendOpts(bobAddress))
+
+    // Deploy EmailClaim
+    ;({ contract: emailClaim } = await EmailClaimContract.deploy(
+      testWallet,
+      token.address,
       data.vkHash as unknown as FieldLike,
       trustedDkimKeyHash0,
       trustedDkimKeyHash1,
-      authorizedEmailHash,
       MAX_EMAIL_AGE,
-    )
-      .send(sendOpts))
+    ).send(sendOpts(bobAddress)))
+    expect(emailClaim.address.toString()).not.toBe("")
 
-    expect(zkEmailVerifierContract.address).toBeDefined()
-    expect(zkEmailVerifierContract.address.toString()).not.toBe("")
-
-    console.log("Contract deployed at address:", zkEmailVerifierContract.address.toString())
+    console.log(`Token: ${token.address}`)
+    console.log(`EmailClaim: ${emailClaim.address}`)
   }, TEST_TIMEOUT)
 
-  test("should verify email proof with correct intent and recipient", async () => {
-    const sendOpts = {
-      from: ownerAddress,
-      fee: { paymentMethod: sponsoredPaymentMethod },
-    }
+  test("should allow Bob to deposit tokens", async () => {
+    const authwitNonce = Fr.random()
+    await testWallet.setPublicAuthWit(
+      {
+        caller: emailClaim.address,
+        action: token.methods.transfer_in_public(bobAddress, emailClaim.address, DEPOSIT_AMOUNT, authwitNonce),
+      },
+      true,
+    ).send(sendOpts(bobAddress))
 
-    console.log("Submitting email proof for on-chain verification...")
-    const { receipt: tx } = await zkEmailVerifierContract.methods.verify_email(
+    await emailClaim.methods.deposit(
+      fromAddressHash,
+      DEPOSIT_AMOUNT,
+      authwitNonce,
+    ).send(sendOpts(bobAddress))
+
+    const balance = (await emailClaim.methods.get_deposit_balance(fromAddressHash).simulate({ from: bobAddress })).result
+    expect(balance).toBe(DEPOSIT_AMOUNT)
+    console.log(`Bob deposited ${DEPOSIT_AMOUNT}, balance: ${balance}`)
+  }, TEST_TIMEOUT)
+
+  test("should allow Carol to create a claim and complete it with email proof", async () => {
+    // Carol creates partial note
+    const { result: partialNote } = await emailClaim.methods.create_claim().send(sendOpts(carolAddress))
+    expect(partialNote).toBeDefined()
+    console.log(`Partial note: ${partialNote}`)
+
+    // Carol completes claim with email proof
+    const { receipt: tx } = await emailClaim.methods.claim_with_email(
+      toAddressHash,
       intentHash,
+      partialNote,
+      CLAIM_AMOUNT,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
       data.publicInputs as unknown as FieldLike[],
-    ).send(sendOpts)
-    expect(tx).toBeDefined()
-    expect(tx.txHash).toBeDefined()
+    ).send(sendOpts(carolAddress))
     expect(tx.executionResult).toBe(TxExecutionResult.SUCCESS)
-
-    console.log(`Transaction hash: ${tx.txHash.toString()}`)
-    console.log(`Transaction status: ${tx.status}`)
-    console.log("Email proof verified — nullifier pushed, timestamp checked")
+    console.log(`Claim tx: ${tx.txHash}`)
   }, TEST_TIMEOUT)
 
-  test("should reject reuse of the same email proof (nullifier prevents replay)", async () => {
-    const sendOpts = {
-      from: ownerAddress,
-      fee: { paymentMethod: sponsoredPaymentMethod },
-    }
+  test("should reflect correct balances after claim", async () => {
+    const depositAfter = (await emailClaim.methods.get_deposit_balance(fromAddressHash).simulate({ from: bobAddress })).result
+    expect(depositAfter).toBe(DEPOSIT_AMOUNT - CLAIM_AMOUNT)
+    console.log(`Bob's deposit after claim: ${depositAfter}`)
+  }, TEST_TIMEOUT)
 
-    console.log("Attempting to reuse the same email proof (should fail due to duplicate nullifier)...")
+  test("should reject replay of same email proof", async () => {
+    const { result: partialNote2 } = await emailClaim.methods.create_claim().send(sendOpts(carolAddress))
+
     await expect(
-      zkEmailVerifierContract.methods.verify_email(
+      emailClaim.methods.claim_with_email(
+        toAddressHash,
         intentHash,
+        partialNote2,
+        CLAIM_AMOUNT,
         data.vkAsFields as unknown as FieldLike[],
         data.proofAsFields as unknown as FieldLike[],
         data.publicInputs as unknown as FieldLike[],
-      ).send(sendOpts)
+      ).send(sendOpts(carolAddress))
     ).rejects.toThrow()
-
-    console.log("Replay correctly rejected — email nullifier prevents reuse")
-  }, TEST_TIMEOUT)
-
-  test("should reject email proof with wrong intent hash", async () => {
-    const sendOpts = {
-      from: ownerAddress,
-      fee: { paymentMethod: sponsoredPaymentMethod },
-    }
-
-    const wrongIntentHash = Fr.random() as unknown as FieldLike
-
-    console.log("Submitting proof with wrong intent hash (should fail)...")
-    await expect(
-      zkEmailVerifierContract.methods.verify_email(
-        wrongIntentHash,
-        data.vkAsFields as unknown as FieldLike[],
-        data.proofAsFields as unknown as FieldLike[],
-        data.publicInputs as unknown as FieldLike[],
-      ).send(sendOpts)
-    ).rejects.toThrow()
-
-    console.log("Wrong intent hash correctly rejected")
-  }, TEST_TIMEOUT)
-
-  test("should read stored authorized email hash", async () => {
-    const { result: storedHash } = await zkEmailVerifierContract.methods.get_authorized_email_hash()
-      .simulate({ from: ownerAddress })
-
-    expect(storedHash).toBe(BigInt(data.publicInputs[3]))
-    console.log(`Stored authorized email hash: ${storedHash}`)
+    console.log("Replay correctly rejected -- nullifier prevents reuse")
   }, TEST_TIMEOUT)
 })

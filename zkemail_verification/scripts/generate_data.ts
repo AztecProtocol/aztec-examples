@@ -272,12 +272,13 @@ console.log(`Public inputs: ${proofData.publicInputs.length}`);
 
 // Log public input meanings
 console.log("\nPublic inputs breakdown:");
-console.log(`  [0] pubkey_hash[0]:   ${proofData.publicInputs[0]}`);
-console.log(`  [1] pubkey_hash[1]:   ${proofData.publicInputs[1]}`);
-console.log(`  [2] email_nullifier:  ${proofData.publicInputs[2]}`);
-console.log(`  [3] to_address_hash:  ${proofData.publicInputs[3]}`);
-console.log(`  [4] intent_hash:      ${proofData.publicInputs[4]}`);
-console.log(`  [5] dkim_timestamp:   ${proofData.publicInputs[5]}`);
+console.log(`  [0] pubkey_hash[0]:     ${proofData.publicInputs[0]}`);
+console.log(`  [1] pubkey_hash[1]:     ${proofData.publicInputs[1]}`);
+console.log(`  [2] email_nullifier:    ${proofData.publicInputs[2]}`);
+console.log(`  [3] from_address_hash:  ${proofData.publicInputs[3]}`);
+console.log(`  [4] to_address_hash:    ${proofData.publicInputs[4]}`);
+console.log(`  [5] intent_hash:        ${proofData.publicInputs[5]}`);
+console.log(`  [6] dkim_timestamp:     ${proofData.publicInputs[6]}`);
 
 // Write data.json
 const data = {
