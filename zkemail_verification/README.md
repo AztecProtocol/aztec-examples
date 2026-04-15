@@ -6,14 +6,27 @@ Built with the [zkemail.nr](https://github.com/zkemail/zkemail.nr) library on Az
 
 ## Security Model
 
-The contract enforces four constraints on each email proof:
+The contract enforces five constraints on each email proof:
 
-1. **Recipient binding** — The email's `to` address must hash to the `authorized_email_hash` stored at deployment. Only emails sent to the account owner's address are accepted.
-2. **Intent binding** — The email's `subject` field is hashed and compared against a caller-provided `expected_intent_hash`. This ties the email to a specific action (e.g., a Poseidon hash of calldata placed in the subject).
-3. **Single use** — The DKIM signature is hashed into a nullifier and pushed on-chain. Replaying the same email proof fails because the nullifier already exists.
-4. **Freshness** — The DKIM `t=` timestamp is extracted and checked in a public function against the block timestamp. Emails older than `max_email_age` seconds are rejected.
+1. **DKIM key binding** — The proof's DKIM public key hash (`public_inputs[0]`, `[1]`) must match the trusted key hashes stored at deployment. Without this, an attacker could generate their own RSA keypair, forge a DKIM signature, and produce a valid proof.
+2. **Recipient binding** — The email's `to` address must hash to the `authorized_email_hash` stored at deployment. Only emails sent to the account owner's address are accepted.
+3. **Intent binding** — The email's `subject` field is hashed and compared against a caller-provided `expected_intent_hash`. This ties the email to a specific action (e.g., a Poseidon hash of calldata placed in the subject).
+4. **Single use** — The DKIM signature is hashed into a nullifier and pushed on-chain. Replaying the same email proof fails because the nullifier already exists.
+5. **Freshness** — The DKIM `t=` timestamp is extracted and checked in a public function against the block timestamp. Emails older than `max_email_age` seconds are rejected.
 
-The sender's domain is also verified to be `icloud.com` via DKIM.
+The sender's domain is also verified to be `icloud.com` via DKIM in the circuit.
+
+### DKIM Key Rotation Caveat
+
+This example pins the trusted DKIM public key hash at contract deployment time. In practice, mail providers rotate their DKIM signing keys periodically — a domain can publish a new key under the same selector, or switch selectors entirely. When that happens, proofs generated with the old key will still verify, but proofs using the new key will be rejected by the contract (the key hash won't match).
+
+A production system should replace the static key hash with a **DKIM key registry** that tracks current keys per `(domain, selector)` pair. The two main approaches:
+
+1. **DNSSEC-aware proof** — The prover includes the full DNSSEC chain from the DNS root to the DKIM TXT record. The circuit or a dedicated verifier contract validates the chain, proving the key was authentically published in DNS. This is the strongest trust model but requires in-circuit DNSSEC signature verification (multiple RSA/ECDSA checks across the delegation chain) and handling of signature validity windows.
+
+2. **Narrowly-scoped DNSSEC oracle** — An off-chain service resolves the DKIM TXT record with full DNSSEC validation and submits signed `(domain, selector, key_hash, expires_at)` attestations to an on-chain registry. The email verifier contract checks the proof's key against the registry. This is simpler to implement and sufficient when the oracle's trust boundary is acceptable.
+
+In either case, the contract should check key expiry and support updates without redeployment.
 
 ## How It Works
 
@@ -25,11 +38,11 @@ Raw Email ──> [Noir Circuit] ──>  │  6 public outputs:       │
                   │  from domain  │  [2] email_nullifier     │──> [Aztec Contract]
                   │  to address   │  [3] to_address_hash     │        │
                   │  subject      │  [4] intent_hash         │        │  verify_honk_proof()
-                  │  timestamp    │  [5] dkim_timestamp      │        │  check recipient
-                  │               └──────────────────────────┘        │  check intent
-                  │                                                   │  push nullifier
-                  │  Body verification omitted —                      │  check freshness
-                  │  all auth data is in DKIM-signed headers,         │
+                  │  timestamp    │  [5] dkim_timestamp      │        │  check DKIM key
+                  │               └──────────────────────────┘        │  check recipient
+                  │                                                   │  check intent
+                  │  Body verification omitted —                      │  push nullifier
+                  │  all auth data is in DKIM-signed headers,         │  check freshness
                   │  avoiding extra SHA256 hashing cost               │
 ```
 
@@ -47,13 +60,14 @@ Body verification is omitted since all authorization-relevant data lives in the 
 
 ### Contract (`contract/src/main.nr`)
 
-- `constructor(vk_hash, authorized_email_hash, max_email_age)` — Stores the verification key hash, the Poseidon2 hash of the authorized recipient email, and the maximum email age in seconds.
+- `constructor(vk_hash, trusted_dkim_key_hash_0, trusted_dkim_key_hash_1, authorized_email_hash, max_email_age)` — Stores the verification key hash, the trusted DKIM public key hashes (modulus and redc), the Poseidon2 hash of the authorized recipient email, and the maximum email age in seconds.
 - `verify_email(expected_intent_hash, vk, proof, public_inputs)` — **Private function** that:
   1. Verifies the UltraHonk proof against the stored VK hash
-  2. Asserts `public_inputs[3]` (to address hash) matches `authorized_email_hash`
-  3. Asserts `public_inputs[4]` (subject hash) matches `expected_intent_hash`
-  4. Pushes `public_inputs[2]` (email nullifier) to prevent replay
-  5. Enqueues a public call to check `public_inputs[5]` (timestamp) is fresh
+  2. Asserts `public_inputs[0]` and `[1]` (DKIM key hashes) match the trusted key
+  3. Asserts `public_inputs[3]` (to address hash) matches `authorized_email_hash`
+  4. Asserts `public_inputs[4]` (subject hash) matches `expected_intent_hash`
+  5. Pushes `public_inputs[2]` (email nullifier) to prevent replay
+  6. Enqueues a public call to check `public_inputs[5]` (timestamp) is fresh
 - `_check_email_freshness(email_timestamp, max_age)` — **Public function** that checks `block.timestamp - email_timestamp <= max_age`
 - `get_authorized_email_hash()` — **View function** that returns the stored authorized email hash
 - `get_max_email_age()` — **View function** that returns the stored maximum email age
@@ -91,7 +105,7 @@ nargo --version  # 1.0.0-beta.18
 │   ├── src/main.nr                # DKIM verify + address/subject/timestamp extraction
 │   └── Nargo.toml                 # Depends on zkemail.nr
 ├── contract/                       # Aztec smart contract
-│   ├── src/main.nr                # verify_honk_proof + nullifier + timestamp check
+│   ├── src/main.nr                # verify_honk_proof + DKIM key + nullifier + timestamp
 │   ├── artifacts/                 # Generated TypeScript bindings
 │   └── Nargo.toml                 # Depends on aztec-nr and bb_proof_verification
 ├── scripts/
@@ -180,6 +194,9 @@ Run `yarn ccc` to compile the contract and generate TypeScript bindings.
 
 **"Cannot find module '../data.json'"**
 Run `yarn data` to generate the proof data.
+
+**"DKIM public key does not match trusted key"**
+The proof was generated with a DKIM key that doesn't match the trusted key hashes stored at deployment. This can happen after a DKIM key rotation. Redeploy the contract with the current key hashes from the proof's `public_inputs[0]` and `[1]`.
 
 **"Email recipient does not match authorized address"**
 The `to` address in the email doesn't match the `authorized_email_hash` stored at deployment. Ensure the proof was generated with the correct test email.
