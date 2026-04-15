@@ -43,9 +43,8 @@ fn main(
     let _ = pubkey.verify_dkim_signature(header, signature);
 
     // 2. Extract and verify the sender's domain is icloud.com
-    //    NOTE: Header field names are matched in lowercase. This assumes DKIM
-    //    c=relaxed canonicalization, which lowercases header names before signing.
-    //    The TypeScript parser matches case-insensitively per RFC 5322.
+    //    The header input must be DKIM-canonicalized (c=relaxed), which lowercases
+    //    field names. All field name comparisons below use lowercase literals.
     let from_address: BoundedVec<u8, MAX_EMAIL_ADDRESS_LENGTH> = get_email_address(
         header,
         from_header_sequence,

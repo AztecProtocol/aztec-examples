@@ -196,7 +196,7 @@ Run `yarn ccc` to compile the contract and generate TypeScript bindings.
 Run `yarn data` to generate the proof data.
 
 **"DKIM public key does not match trusted key"**
-The proof was generated with a DKIM key that doesn't match the trusted key hashes stored at deployment. This can happen after a DKIM key rotation. Redeploy the contract with the current key hashes from the proof's `public_inputs[0]` and `[1]`.
+The proof was generated with a DKIM key that doesn't match the trusted key hashes stored at deployment. This can happen after a DKIM key rotation. To resolve, look up the current DKIM public key from DNS (e.g., `dig TXT <selector>._domainkey.icloud.com`), compute its Poseidon hash, and redeploy the contract with the updated key hashes. Do not take key hashes from the rejected proof's own public inputs — those are prover-controlled and may not reflect a legitimate key.
 
 **"Email recipient does not match authorized address"**
 The `to` address in the email doesn't match the `authorized_email_hash` stored at deployment. Ensure the proof was generated with the correct test email.
