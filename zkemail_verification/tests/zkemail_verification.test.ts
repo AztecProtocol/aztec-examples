@@ -4,6 +4,7 @@ import { TxExecutionResult } from "@aztec/aztec.js/tx"
 import { AztecAddress } from "@aztec/aztec.js/addresses"
 import { NO_FROM } from "@aztec/aztec.js/account"
 import { Fr } from "@aztec/aztec.js/fields"
+import { SetPublicAuthwitContractInteraction } from "@aztec/aztec.js/authorization"
 import { createAztecNodeClient } from "@aztec/aztec.js/node"
 import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
 import { EmbeddedWallet } from "@aztec/wallets/embedded"
@@ -113,13 +114,14 @@ describe("ZKEmail Offchain Transfer", () => {
 
   test("should allow Bob to deposit tokens", async () => {
     const authwitNonce = Fr.random()
-    await testWallet.setPublicAuthWit(
-      {
-        caller: emailClaim.address,
-        action: token.methods.transfer_in_public(bobAddress, emailClaim.address, DEPOSIT_AMOUNT, authwitNonce),
-      },
+    const depositAction = token.methods.transfer_in_public(bobAddress, emailClaim.address, DEPOSIT_AMOUNT, authwitNonce)
+    const authwit = await SetPublicAuthwitContractInteraction.create(
+      testWallet,
+      bobAddress,
+      { caller: emailClaim.address, action: depositAction },
       true,
-    ).send(sendOpts(bobAddress))
+    )
+    await authwit.send(sendOpts(bobAddress))
 
     await emailClaim.methods.deposit(
       fromAddressHash,

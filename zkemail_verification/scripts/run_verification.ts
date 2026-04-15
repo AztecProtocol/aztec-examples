@@ -9,6 +9,7 @@ import data from "../data.json";
 import { EmbeddedWallet } from "@aztec/wallets/embedded";
 import { NO_FROM } from "@aztec/aztec.js/account";
 import { Fr } from "@aztec/aztec.js/fields";
+import { SetPublicAuthwitContractInteraction } from "@aztec/aztec.js/authorization";
 
 export const NODE_URL = "http://localhost:8080";
 
@@ -107,13 +108,14 @@ async function main() {
   console.log("\n--- Bob Deposits ---");
   // Bob authorizes the EmailClaim contract to pull his tokens
   const authwitNonce = Fr.random();
-  await testWallet.setPublicAuthWit(
-    {
-      caller: emailClaim.address,
-      action: token.methods.transfer_in_public(bobAddress, emailClaim.address, DEPOSIT_AMOUNT, authwitNonce),
-    },
+  const depositAction = token.methods.transfer_in_public(bobAddress, emailClaim.address, DEPOSIT_AMOUNT, authwitNonce);
+  const authwit = await SetPublicAuthwitContractInteraction.create(
+    testWallet,
+    bobAddress,
+    { caller: emailClaim.address, action: depositAction },
     true,
-  ).send(sendOpts(bobAddress));
+  );
+  await authwit.send(sendOpts(bobAddress));
 
   await emailClaim.methods.deposit(
     fromAddressHash,
