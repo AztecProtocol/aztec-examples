@@ -121,10 +121,15 @@ function findHeaderField(headerBytes: number[], fieldName: string): { index: num
     const atLineStart = i === 0 || (i >= 2 && headerBytes[i - 2] === cr && headerBytes[i - 1] === lf);
     if (!atLineStart) continue;
 
-    // Check field name match
+    // Check field name match (case-insensitive per RFC 5322)
     let match = true;
     for (let j = 0; j < nameBytes.length; j++) {
-      if (headerBytes[i + j] !== nameBytes[j]) { match = false; break; }
+      // Compare lowercase: ASCII uppercase A-Z (65-90) -> lowercase a-z (97-122)
+      const hb = headerBytes[i + j];
+      const nb = nameBytes[j];
+      const hbLower = (hb >= 65 && hb <= 90) ? hb + 32 : hb;
+      const nbLower = (nb >= 65 && nb <= 90) ? nb + 32 : nb;
+      if (hbLower !== nbLower) { match = false; break; }
     }
     if (!match || headerBytes[i + nameBytes.length] !== colon) continue;
 

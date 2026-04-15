@@ -12,7 +12,12 @@ pub contract ZKEmailVerifier {
     #[storage]
     struct Storage<Context> {
         vk_hash: PublicImmutable<Field, Context>,
-        /// Pedersen hash of the authorized recipient email address.
+        /// Poseidon hash of the trusted DKIM RSA public key modulus.
+        /// Proofs must use a key whose hash matches, preventing self-signed forgeries.
+        trusted_dkim_key_hash_0: PublicImmutable<Field, Context>,
+        /// Poseidon hash of the trusted DKIM RSA public key redc parameter.
+        trusted_dkim_key_hash_1: PublicImmutable<Field, Context>,
+        /// Poseidon2 hash of the authorized recipient email address.
         /// Only emails sent TO this address can authorize actions.
         authorized_email_hash: PublicImmutable<Field, Context>,
         /// Maximum allowed age of an email in seconds.
@@ -22,8 +27,16 @@ pub contract ZKEmailVerifier {
 
     #[initializer]
     #[external("public")]
-    fn constructor(vk_hash: Field, authorized_email_hash: Field, max_email_age: Field) {
+    fn constructor(
+        vk_hash: Field,
+        trusted_dkim_key_hash_0: Field,
+        trusted_dkim_key_hash_1: Field,
+        authorized_email_hash: Field,
+        max_email_age: Field,
+    ) {
         self.storage.vk_hash.initialize(vk_hash);
+        self.storage.trusted_dkim_key_hash_0.initialize(trusted_dkim_key_hash_0);
+        self.storage.trusted_dkim_key_hash_1.initialize(trusted_dkim_key_hash_1);
         self.storage.authorized_email_hash.initialize(authorized_email_hash);
         self.storage.max_email_age.initialize(max_email_age);
     }
@@ -35,8 +48,8 @@ pub contract ZKEmailVerifier {
     /// specific action.
     ///
     /// Public inputs layout from the circuit:
-    ///   [0]: pubkey_hash[0]  -- DKIM key identity
-    ///   [1]: pubkey_hash[1]  -- DKIM key identity
+    ///   [0]: pubkey_hash[0]  -- must match trusted DKIM key
+    ///   [1]: pubkey_hash[1]  -- must match trusted DKIM key
     ///   [2]: email_nullifier -- prevents email reuse
     ///   [3]: to_address_hash -- must match authorized_email_hash
     ///   [4]: intent_hash     -- hash of email subject (action being authorized)
@@ -53,6 +66,20 @@ pub contract ZKEmailVerifier {
         // Verify the ZK proof against the stored verification key hash
         let vk_hash = self.storage.vk_hash.read();
         verify_honk_proof(verification_key, proof, public_inputs, vk_hash);
+
+        // Verify the DKIM public key matches the trusted key.
+        // Without this, an attacker could generate their own RSA keypair,
+        // forge a DKIM signature, and produce a valid proof.
+        let trusted_key_0 = self.storage.trusted_dkim_key_hash_0.read();
+        let trusted_key_1 = self.storage.trusted_dkim_key_hash_1.read();
+        assert(
+            public_inputs[0] == trusted_key_0,
+            "DKIM public key does not match trusted key (modulus)",
+        );
+        assert(
+            public_inputs[1] == trusted_key_1,
+            "DKIM public key does not match trusted key (redc)",
+        );
 
         // Verify the email was sent to the authorized address
         let authorized_email_hash = self.storage.authorized_email_hash.read();

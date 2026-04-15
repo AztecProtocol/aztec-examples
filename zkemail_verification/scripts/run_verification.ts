@@ -54,8 +54,12 @@ async function main() {
   console.info('Owner address:', ownerAddress.toString());
 
   // Public inputs from proof:
+  //   [0] = trusted DKIM pubkey hash (modulus)
+  //   [1] = trusted DKIM pubkey hash (redc)
   //   [3] = to_address_hash (used as authorized_email_hash)
   //   [4] = intent_hash (subject hash)
+  const trustedDkimKeyHash0 = data.publicInputs[0] as unknown as FieldLike;
+  const trustedDkimKeyHash1 = data.publicInputs[1] as unknown as FieldLike;
   const authorizedEmailHash = data.publicInputs[3] as unknown as FieldLike;
   const intentHash = data.publicInputs[4] as unknown as FieldLike;
 
@@ -63,6 +67,8 @@ async function main() {
   const { contract: zkEmailVerifier } = await ZKEmailVerifierContract.deploy(
     testWallet,
     data.vkHash as unknown as FieldLike,
+    trustedDkimKeyHash0,
+    trustedDkimKeyHash1,
     authorizedEmailHash,
     MAX_EMAIL_AGE,
   )

@@ -43,6 +43,9 @@ fn main(
     let _ = pubkey.verify_dkim_signature(header, signature);
 
     // 2. Extract and verify the sender's domain is icloud.com
+    //    NOTE: Header field names are matched in lowercase. This assumes DKIM
+    //    c=relaxed canonicalization, which lowercases header names before signing.
+    //    The TypeScript parser matches case-insensitively per RFC 5322.
     let from_address: BoundedVec<u8, MAX_EMAIL_ADDRESS_LENGTH> = get_email_address(
         header,
         from_header_sequence,
@@ -178,14 +181,17 @@ fn extract_dkim_timestamp(
     dkim_sequence: Sequence,
     timestamp_index: u32,
 ) -> Field {
-    // Verify timestamp_index falls within the DKIM header field
+    // Verify timestamp_index falls strictly within the DKIM header field.
+    // Both the "t=" prefix and all digits must be inside the DKIM-Signature sequence,
+    // otherwise a prover could point to a t= in a later, unsigned header line.
+    let dkim_end = dkim_sequence.index + dkim_sequence.length;
     assert(
         timestamp_index >= dkim_sequence.index + 2,
         "Timestamp index too early in DKIM header",
     );
     assert(
-        timestamp_index + MAX_TIMESTAMP_DIGITS <= header.len(),
-        "Not enough header bytes for timestamp digits",
+        timestamp_index + MAX_TIMESTAMP_DIGITS <= dkim_end,
+        "Timestamp digits extend past DKIM header field",
     );
 
     // Verify "t=" prefix immediately before the digits
