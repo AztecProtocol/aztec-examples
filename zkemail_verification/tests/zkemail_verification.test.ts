@@ -5,6 +5,8 @@ import { AztecAddress } from "@aztec/aztec.js/addresses"
 import { NO_FROM } from "@aztec/aztec.js/account"
 import { Fr } from "@aztec/aztec.js/fields"
 import { SetPublicAuthwitContractInteraction } from "@aztec/aztec.js/authorization"
+import { poseidon2HashWithSeparator } from "@aztec/foundation/crypto/poseidon"
+import { DomainSeparator } from "@aztec/constants"
 import { createAztecNodeClient } from "@aztec/aztec.js/node"
 import { SponsoredFeePaymentMethod } from "@aztec/aztec.js/fee"
 import { EmbeddedWallet } from "@aztec/wallets/embedded"
@@ -135,16 +137,22 @@ describe("ZKEmail Offchain Transfer", () => {
   }, TEST_TIMEOUT)
 
   test("should allow Carol to create a claim and complete it with email proof", async () => {
+    // Carol generates randomness and computes commitment offchain
+    const randomness = Fr.random()
+    const commitment = await poseidon2HashWithSeparator(
+      [carolAddress.toField(), randomness],
+      DomainSeparator.NOTE_HASH,
+    )
+
     // Carol creates partial note
-    const { result: partialNote } = await emailClaim.methods.create_claim().send(sendOpts(carolAddress))
-    expect(partialNote).toBeDefined()
-    console.log(`Partial note: ${partialNote}`)
+    await emailClaim.methods.create_claim(randomness).send(sendOpts(carolAddress))
+    console.log(`Partial note commitment: ${commitment}`)
 
     // Carol completes claim with email proof
     const { receipt: tx } = await emailClaim.methods.claim_with_email(
       toAddressHash,
       intentHash,
-      partialNote,
+      { commitment },
       CLAIM_AMOUNT,
       data.vkAsFields as unknown as FieldLike[],
       data.proofAsFields as unknown as FieldLike[],
@@ -161,13 +169,18 @@ describe("ZKEmail Offchain Transfer", () => {
   }, TEST_TIMEOUT)
 
   test("should reject replay of same email proof", async () => {
-    const { result: partialNote2 } = await emailClaim.methods.create_claim().send(sendOpts(carolAddress))
+    const randomness2 = Fr.random()
+    const commitment2 = await poseidon2HashWithSeparator(
+      [carolAddress.toField(), randomness2],
+      DomainSeparator.NOTE_HASH,
+    )
+    await emailClaim.methods.create_claim(randomness2).send(sendOpts(carolAddress))
 
     await expect(
       emailClaim.methods.claim_with_email(
         toAddressHash,
         intentHash,
-        partialNote2,
+        { commitment: commitment2 },
         CLAIM_AMOUNT,
         data.vkAsFields as unknown as FieldLike[],
         data.proofAsFields as unknown as FieldLike[],

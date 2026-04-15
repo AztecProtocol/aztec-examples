@@ -39,9 +39,9 @@ A production system should replace the static key hash with a **DKIM key registr
 
 In either case, the contract should check key expiry and support updates without redeployment.
 
-### Partial Note UX Note
+### Deterministic Partial Notes
 
-At Aztec v4.2.0, `UintNote::partial()` samples randomness internally via the oracle, meaning Carol cannot precompute the partial note commitment offchain -- she must get it from the transaction return value. A future `UintNote::partial_with_randomness(randomness)` API (where Carol supplies the randomness) would let Carol compute the commitment deterministically before submitting any transaction. This would improve the UX by allowing Carol to include the commitment in the email she asks Bob to send, before her `create_claim` transaction even lands.
+The contract's `create_claim(randomness)` accepts caller-provided randomness so Carol can compute the partial note commitment offchain as `poseidon2([carolAddress, randomness], DomainSeparator.NOTE_HASH)` before the transaction lands. This lets Carol include the commitment in the email she asks Bob to send, without waiting for `create_claim` to finalize. The standard `UintNote::partial()` at v4.2.0 samples randomness from the oracle, which doesn't support this UX -- so the contract reimplements the partial note creation logic with explicit randomness. Carol is responsible for generating cryptographically-strong randomness; a predictable value enables brute-force recovery of her address from the public commitment.
 
 ### Privacy Tradeoffs
 

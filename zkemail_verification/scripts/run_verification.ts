@@ -10,6 +10,8 @@ import { EmbeddedWallet } from "@aztec/wallets/embedded";
 import { NO_FROM } from "@aztec/aztec.js/account";
 import { Fr } from "@aztec/aztec.js/fields";
 import { SetPublicAuthwitContractInteraction } from "@aztec/aztec.js/authorization";
+import { poseidon2HashWithSeparator } from "@aztec/foundation/crypto/poseidon";
+import { DomainSeparator } from "@aztec/constants";
 
 export const NODE_URL = "http://localhost:8080";
 
@@ -128,15 +130,20 @@ async function main() {
 
   // 4. Carol creates a claim (partial note)
   console.log("\n--- Carol Creates Claim ---");
-  const { result: partialNote } = await emailClaim.methods.create_claim().send(sendOpts(carolAddress));
-  console.log(`Partial note commitment: ${partialNote}`);
+  const randomness = Fr.random();
+  const commitment = await poseidon2HashWithSeparator(
+    [carolAddress.toField(), randomness],
+    DomainSeparator.NOTE_HASH,
+  );
+  await emailClaim.methods.create_claim(randomness).send(sendOpts(carolAddress));
+  console.log(`Partial note commitment: ${commitment}`);
 
   // 5. Carol submits the email proof to complete the claim
   console.log("\n--- Carol Claims with Email Proof ---");
   await emailClaim.methods.claim_with_email(
     toAddressHash,
     intentHash,
-    partialNote,
+    { commitment },
     CLAIM_AMOUNT,
     data.vkAsFields as unknown as FieldLike[],
     data.proofAsFields as unknown as FieldLike[],

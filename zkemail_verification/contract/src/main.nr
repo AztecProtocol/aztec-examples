@@ -22,14 +22,35 @@ pub contract EmailClaim {
             functions::{external, initializer, only_self, view},
             storage::storage,
         },
-        protocol::address::AztecAddress,
+        messages::{
+            logs::partial_note::encode_partial_note_private_message,
+            message_delivery::{do_private_message_delivery, MessageDelivery},
+        },
+        protocol::{
+            address::AztecAddress,
+            constants::DOM_SEP__NOTE_HASH,
+            hash::poseidon2_hash_with_separator,
+            traits::{FromField, ToField},
+        },
         state_vars::{Map, Owned, PublicImmutable, PublicMutable, StateVariable},
     };
 
     use uint_note::{PartialUintNote, UintNote};
+    use aztec::note::note_interface::NoteType;
     use balance_set::BalanceSet;
     use token::Token;
     use bb_proof_verification::{UltraHonkVerificationKey, UltraHonkZKProof, verify_honk_proof};
+
+    /// Log content type for partial note delivery. Replicates the internal
+    /// UintPartialNotePrivateLogContent from uint_note.
+    #[derive(aztec::protocol::traits::Packable)]
+    struct PartialLogContent {}
+
+    impl NoteType for PartialLogContent {
+        fn get_id() -> Field {
+            UintNote::get_id()
+        }
+    }
 
     #[storage]
     struct Storage<Context> {
@@ -97,17 +118,38 @@ pub contract EmailClaim {
 
     /// Carol creates a partial note for herself, to be funded later via `claim_with_email`.
     ///
-    /// Returns the PartialUintNote whose commitment Carol sends to Bob for inclusion in
-    /// the email subject. Randomness is sampled by the oracle for privacy.
+    /// Carol provides randomness so the commitment is deterministic from her inputs,
+    /// allowing her to compute it offchain before the transaction lands. The commitment
+    /// is `poseidon2([owner, randomness], DOM_SEP__NOTE_HASH)`.
+    ///
+    /// The caller is responsible for generating cryptographically-strong randomness.
     #[external("private")]
-    fn create_claim() -> pub PartialUintNote {
+    fn create_claim(randomness: Field) -> pub PartialUintNote {
         let recipient = self.msg_sender();
-        UintNote::partial(
-            recipient,
+
+        // Compute the partial note commitment (same as uint_note's compute_partial_commitment)
+        let commitment = poseidon2_hash_with_separator(
+            [recipient.to_field(), randomness],
+            DOM_SEP__NOTE_HASH,
+        );
+
+        // Send the partial note log to the recipient for note discovery
+        let private_log_content = PartialLogContent {};
+        do_private_message_delivery(
             self.context,
+            || encode_partial_note_private_message(private_log_content, recipient, randomness, commitment),
+            Option::none(),
             recipient,
-            self.address,
-        )
+            MessageDelivery.ONCHAIN_UNCONSTRAINED,
+        );
+
+        let partial_note = PartialUintNote::from_field(commitment);
+
+        // Push validity commitment to nullifier tree
+        let validity_commitment = partial_note.compute_validity_commitment(self.address);
+        self.context.push_nullifier(validity_commitment);
+
+        partial_note
     }
 
     /// Verify a zkEmail proof and complete a partial note, entirely on L2.
