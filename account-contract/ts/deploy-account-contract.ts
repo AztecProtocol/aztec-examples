@@ -33,8 +33,6 @@ const deployAccountOpts: DeployOptions = {
       (await getSponsoredPFCContract()).address
     ),
   },
-  contractAddressSalt: Fr.ONE,
-  universalDeploy: true,
 };
 
 const passwordAccountContract = new PasswordAccountContract(new Fr(123123123123));
@@ -62,14 +60,16 @@ const wallet = await EmbeddedWallet.create(createAztecNodeClient('http://localho
 
 await wallet.registerContract(await getSponsoredPFCContract(), SponsoredFPCContractArtifact);
 
-const accountContractDeployMethod = new DeployMethod(
-    publicKeys,
+const accountContractDeployMethod = DeployMethod.create(
     wallet,
-    artifact,
-    (instance, wallet) => Contract.at(instance.address, artifact, wallet),
-    constructorArgs,
-    constructorName,
-)
+    {
+        artifact,
+        postDeployCtor: (instance, wallet) => Contract.at(instance.address, artifact, wallet),
+        args: constructorArgs,
+        constructorNameOrArtifact: constructorName,
+    },
+    { salt: Fr.ONE, universalDeploy: true, publicKeys },
+);
 
 const { estimatedGas, stats } = await accountContractDeployMethod.simulate(deployAccountOpts);
 
