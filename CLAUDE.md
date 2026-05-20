@@ -52,7 +52,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 4.2.0  # For recursive_verification
+aztec-up 4.3.0  # For recursive_verification
 ```
 
 ### Building Contracts
@@ -69,14 +69,14 @@ yarn ccc  # Compiles contract and generates TypeScript bindings
 
 ### Building Vanilla Noir Circuits
 
-The compatible `nargo` (version 1.0.0-beta.18) is bundled with the Aztec CLI at `~/.aztec/current/bin/nargo`. Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
+The compatible `nargo` (version 1.0.0-beta.21) is bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo`. As of Aztec v4.3.0, bundled binaries are exposed only under their `aztec-` prefixed names — invoke `aztec-nargo` (a drop-in for `nargo`) rather than the bare name, which is no longer on `PATH`. Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
 
 ```bash
 # Verify nargo is available
-~/.aztec/current/bin/nargo --version
+aztec-nargo --version
 
 # Compile a vanilla Noir circuit
-nargo compile
+aztec-nargo compile
 ```
 
 ### Running Local Development Environment
@@ -103,7 +103,7 @@ aztec test
 aztec start --txe --port=8081
 
 # Terminal 2: Run tests with output
-nargo test --oracle-resolver http://127.0.0.1:8081 --show-output
+aztec-nargo test --oracle-resolver http://127.0.0.1:8081 --show-output
 
 # Run integration tests (recursive_verification)
 cd recursive_verification
@@ -151,10 +151,10 @@ cd recursive_verification
 yarn install
 
 # 2. Verify nargo is available (bundled with Aztec CLI)
-~/.aztec/current/bin/nargo --version
+aztec-nargo --version
 
 # 3. Compile the Noir circuit
-cd circuit && nargo compile && cd ..
+cd circuit && aztec-nargo compile && cd ..
 
 # 4. Compile the Aztec contract
 yarn ccc  # Runs: aztec compile && aztec codegen
@@ -172,7 +172,7 @@ yarn recursion  # Deploys ValueNotEqual contract and verifies proof
 yarn test
 
 # Optional: Run circuit tests
-cd circuit && nargo test
+cd circuit && aztec-nargo test
 ```
 
 ### Starter Token Example
@@ -260,7 +260,7 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 
 **Version Compatibility**: All examples use the same Aztec version:
 
-- All examples: v4.2.0
+- All examples: v4.3.0
 
 ### JavaScript/TypeScript Dependencies
 

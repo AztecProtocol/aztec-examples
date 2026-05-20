@@ -11,13 +11,13 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `4.2.0`
+**Aztec Version**: `4.3.0`
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v22 or higher) and [Yarn](https://yarnpkg.com/)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.2.0)
-- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.18) - bundled with the Aztec CLI at `~/.aztec/current/bin/nargo`
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.3.0)
+- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.21) - bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo` (a drop-in for `nargo`; the bare name is no longer on `PATH` as of Aztec v4.3.0)
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -62,18 +62,18 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 4.2.0
+aztec-up 4.3.0
 ```
 
 This ensures compatibility with the contract dependencies.
 
 ### Nargo (for vanilla Noir circuits):
 
-The compatible `nargo` (version 1.0.0-beta.18) is bundled with the Aztec CLI:
+The compatible `aztec-nargo` (version 1.0.0-beta.21) is bundled with the Aztec CLI:
 
 ```bash
-~/.aztec/current/bin/nargo --version
-# nargo version = 1.0.0-beta.18
+~/.aztec/current/bin/aztec-nargo --version
+# nargo version = 1.0.0-beta.21
 ```
 
 Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
@@ -83,7 +83,7 @@ Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this a
 ### 1. Compile the Noir Circuit
 
 ```bash
-cd circuit && nargo compile
+cd circuit && aztec-nargo compile
 ```
 
 This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` containing the circuit bytecode.
@@ -91,7 +91,7 @@ This compiles `circuit/src/main.nr` and generates `target/hello_circuit.json` co
 ### 2. Execute the Circuit
 
 ```bash
-cd circuit && nargo execute
+cd circuit && aztec-nargo execute
 ```
 
 Generates a witness for testing the circuit with default inputs (defined in `circuit/Prover.toml`).
@@ -165,13 +165,13 @@ For a fresh setup, run these commands in order:
 yarn install
 
 # 2. Setup Aztec
-aztec-up 4.2.0
+aztec-up 4.3.0
 
-# 3. Verify nargo is available (bundled with Aztec CLI)
-~/.aztec/current/bin/nargo --version
+# 3. Verify aztec-nargo is available (bundled with Aztec CLI)
+~/.aztec/current/bin/aztec-nargo --version
 
 # 4. Compile circuit
-cd circuit && nargo compile && cd ..
+cd circuit && aztec-nargo compile && cd ..
 
 # 5. Compile contract
 yarn ccc
@@ -206,7 +206,7 @@ yarn test:watch
 ### Test the Circuit
 
 ```bash
-cd circuit && nargo test
+cd circuit && aztec-nargo test
 ```
 
 This runs the tests defined in `circuit/src/main.nr`. The test verifies that the circuit correctly proves x ≠ y.
@@ -236,7 +236,7 @@ The test suite (`tests/recursive_verification.test.ts`) includes:
 
 4. **"Proof verification failed"**
    - Ensure you've run `yarn data` after any circuit changes
-   - Verify the circuit was compiled with `cd circuit && nargo compile`
+   - Verify the circuit was compiled with `cd circuit && aztec-nargo compile`
 
 5. **Memory issues during proof generation**
    - The Barretenberg prover requires significant RAM
@@ -255,7 +255,7 @@ If you encounter issues, try a clean rebuild:
 rm -rf circuit/target contract/target contract/artifacts data.json
 
 # Rebuild everything
-cd circuit && nargo compile && cd ..
+cd circuit && aztec-nargo compile && cd ..
 yarn ccc
 yarn data
 ```

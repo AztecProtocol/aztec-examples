@@ -19,14 +19,14 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@aztec/accounts": "4.2.0",
-    "@aztec/aztec.js": "4.2.0",
-    "@aztec/bb.js": "4.2.0",
-    "@aztec/kv-store": "4.2.0",
-    "@aztec/noir-contracts.js": "4.2.0",
-    "@aztec/noir-noir_js": "4.2.0",
-    "@aztec/pxe": "4.2.0",
-    "@aztec/wallets": "4.2.0",
+    "@aztec/accounts": "4.3.0",
+    "@aztec/aztec.js": "4.3.0",
+    "@aztec/bb.js": "4.3.0",
+    "@aztec/kv-store": "4.3.0",
+    "@aztec/noir-contracts.js": "4.3.0",
+    "@aztec/noir-noir_js": "4.3.0",
+    "@aztec/pxe": "4.3.0",
+    "@aztec/wallets": "4.3.0",
     "add": "^2.0.6",
     "tsx": "^4.20.6"
   },

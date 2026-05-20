@@ -10,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aztec/accounts": "4.2.0",
-    "@aztec/aztec.js": "4.2.0",
-    "@aztec/wallets": "4.2.0",
-    "@aztec/noir-contracts.js": "4.2.0",
-    "@aztec/pxe": "4.2.0",
+    "@aztec/accounts": "4.3.0",
+    "@aztec/aztec.js": "4.3.0",
+    "@aztec/wallets": "4.3.0",
+    "@aztec/noir-contracts.js": "4.3.0",
+    "@aztec/pxe": "4.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
