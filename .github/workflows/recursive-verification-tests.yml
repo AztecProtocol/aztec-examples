@@ -52,7 +52,7 @@ jobs:
 
       - name: Compile Noir circuit
         working-directory: recursive_verification/circuit
-        run: nargo compile
+        run: aztec-nargo compile
 
       - name: Change ownership for nargo files
         run: sudo chown -R $(whoami) ~/nargo || true
