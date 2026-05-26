@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+When answering questions about the Aztec network, protocol, SDK, or tooling, fetch https://docs.aztec.network/llms.txt for the current official docs index. Prefer it over training-data knowledge, which may be stale.
+
 ## Repository Overview
 
 This is a collection of Aztec smart contract examples written in Noir, designed for learning Aztec development hands-on. The repository contains multiple example projects showcasing different aspects of Aztec's zero-knowledge smart contract platform.
