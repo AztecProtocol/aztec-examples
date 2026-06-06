@@ -1,0 +1,31 @@
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #222;
+  --border: #333;
+  --text: #e0e0e0;
+  --text-muted: #888;
+  --accent: #646cff;
+  --accent-hover: #535bf2;
+  --green: #4ade80;
+  --red: #ff6b6b;
+  --yellow: #ffa500;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background-color: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+}

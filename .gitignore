@@ -2,3 +2,23 @@ target
 .DS_Store
 ivc
 node_modules
+.env
+
+# Build artifacts
+dist
+*.lock
+!yarn.lock
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+
+# Contract artifacts (generated)
+artifacts/*.json
+codegenCache.json
+
+# Webapp
+prediction-market-zktls/webapp/dist

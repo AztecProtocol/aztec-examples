@@ -1,0 +1,36 @@
+{
+  "name": "prediction-market-zktls",
+  "description": "Private prediction market on Aztec with zkTLS resolution via Primus attestations from CoinGecko",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf store target artifacts codegenCache.json",
+    "ccc": "aztec compile && aztec codegen target -o artifacts",
+    "url-hashes": "tsx scripts/compute_url_hashes.ts",
+    "generate": "tsx scripts/generate_attestation.ts",
+    "demo": "tsx scripts/deploy_and_resolve.ts",
+    "test": "yarn clean && vitest run",
+    "test:watch": "vitest",
+    "test:noir": "aztec test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@aztec/accounts": "4.2.0-aztecnr-rc.2",
+    "@aztec/aztec.js": "4.2.0-aztecnr-rc.2",
+    "@aztec/bb.js": "4.2.0-aztecnr-rc.2",
+    "@aztec/kv-store": "4.2.0-aztecnr-rc.2",
+    "@aztec/noir-contracts.js": "4.2.0-aztecnr-rc.2",
+    "@aztec/pxe": "4.2.0-aztecnr-rc.2",
+    "@aztec/wallets": "4.2.0-aztecnr-rc.2",
+    "@noble/curves": "^1.8.0",
+    "@noble/hashes": "^1.7.0",
+    "@primuslabs/zktls-core-sdk": "^0.2.7",
+    "dotenv": "^17.3.1",
+    "tsx": "^4.20.6"
+  }
+}
