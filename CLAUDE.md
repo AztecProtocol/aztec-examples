@@ -31,6 +31,13 @@ aztec-examples/
 │   ├── CLAUDE.md         # Project-specific AI guidance
 │   ├── EXPLAINER.md      # Technical deep-dive explanation
 │   └── run-tests.sh      # Local test runner script
+├── zktls-airdrop/          # Token airdrop via Primus zkTLS GitHub contributor verification
+│   ├── contract/          # PrimusAirdrop Aztec contract
+│   ├── scripts/           # Attestation parsing, URL hashing, deployment
+│   ├── tests/             # Integration tests
+│   ├── testdata/          # Sample attestation data
+│   ├── README.md          # Documentation
+│   └── CLAUDE.md          # Project-specific AI guidance
 ├── starter-token/          # Token contract example with start-here and reference implementations
 │   ├── start-here/        # Template for implementing a token
 │   │   ├── contract/      # Noir contract code

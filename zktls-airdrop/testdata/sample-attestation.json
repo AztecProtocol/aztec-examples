@@ -1,0 +1,55 @@
+{
+  "_comment": "Sample attestation structure showing the expected format from Primus zkTLS. This is NOT a valid attestation (the signature is synthetic). To generate real attestations, use: tsx scripts/generate_attestation.ts <repo> <username>",
+  "verification_type": ["HASH_COMPARISON", "HASH_COMPARISON"],
+  "public_data": [
+    {
+      "attestation": {
+        "recipient": "0x810b7bacEfD5ba495bB688bbFD2501C904036AB7",
+        "request": [
+          {
+            "url": "https://api.github.com/repos/primus-labs/zktls-js-sdk/contributors?per_page=100&page=1",
+            "header": "Accept: application/vnd.github.v3+json",
+            "method": "GET",
+            "body": ""
+          }
+        ],
+        "responseResolves": [
+          {
+            "oneUrlResponseResolve": [
+              {
+                "keyName": "username",
+                "parseType": "json",
+                "parsePath": "$.[?(@.login=='alice')].login"
+              },
+              {
+                "keyName": "contributor-id",
+                "parseType": "json",
+                "parsePath": "$.[?(@.login=='alice')].id"
+              }
+            ]
+          }
+        ],
+        "data": "{\"username\":\"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2\",\"contributor-id\":\"b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3\"}",
+        "attConditions": "[]",
+        "timestamp": 1774617447446,
+        "additionParams": "{\"algorithmType\":\"proxytls\"}"
+      },
+      "attestor": "0x0de886e31723e64aa72e51977b14475fb66a9f72",
+      "signature": "0x6958a1ec1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456781b",
+      "reportTxHash": "0x7908512fabcdef1234567890abcdef1234567890abcdef1234567890abcdef12",
+      "taskId": "0x63c4575babcdef1234567890abcdef1234567890abcdef1234567890abcdef12",
+      "attestationTime": 5508,
+      "attestorUrl": "example-attestor.phala.network"
+    }
+  ],
+  "private_data": [
+    {
+      "id": "username",
+      "content": "alice"
+    },
+    {
+      "id": "contributor-id",
+      "content": "12345678"
+    }
+  ]
+}

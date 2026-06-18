@@ -1,0 +1,10 @@
+[package]
+name = "PrimusAirdrop"
+type = "contract"
+authors = [""]
+
+[dependencies]
+aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "v4.2.0-aztecnr-rc.2", directory = "noir-projects/aztec-nr/aztec" }
+poseidon = { git = "https://github.com/noir-lang/poseidon", tag = "v0.2.6" }
+att_verifier_lib = { git = "https://github.com/primus-labs/zktls-verification-noir", tag = "main", directory = "att_verifier_lib" }
+token_contract = { git = "https://github.com/defi-wonderland/aztec-standards", tag = "dev", directory = "src/token_contract" }
