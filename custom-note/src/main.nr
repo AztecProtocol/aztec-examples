@@ -10,7 +10,7 @@ pub contract CustomNoteContract {
     };
     use aztec::state_vars::{PrivateSet, Owned};
     use aztec::protocol::address::AztecAddress;
-    use aztec::messages::message_delivery::MessageDelivery;
+    use aztec::messages::delivery::MessageDelivery;
     use aztec::note::constants::MAX_NOTES_PER_PAGE;
     use aztec::note::note_viewer_options::NoteViewerOptions;
 
@@ -28,7 +28,7 @@ pub contract CustomNoteContract {
         self.storage.custom_notes
             .at(sender)
             .insert(note)
-            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
+            .deliver(MessageDelivery::onchain_unconstrained());
     }
 
     #[external("utility")]

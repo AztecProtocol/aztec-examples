@@ -4,12 +4,12 @@ This tutorial demonstrates how to build a browser-based wallet application for A
 
 ## Aztec Version Compatibility
 
-This example is compatible with **Aztec v4.3.0**.
+This example is compatible with **Aztec v5.0.0-rc.1**.
 
 To set this version:
 
 ```bash
-aztec-up 4.3.0
+aztec-up 5.0.0-rc.1
 ```
 
 ## What You'll Build
@@ -34,13 +34,13 @@ A web application that demonstrates three core Aztec operations:
 yarn install
 ```
 
-### 2. Start Aztec Sandbox
+### 2. Start the Aztec Local Network
 
 ```bash
-aztec start --sandbox
+aztec start --local-network
 ```
 
-The sandbox must be running on `http://localhost:8080` before starting the app.
+The local network must be running on `http://localhost:8080` before starting the app.
 
 ### 3. Start Development Server
 
@@ -67,10 +67,10 @@ yarn install
 ### 2. Install Aztec Dependencies
 
 ```bash
-yarn add @aztec/accounts@4.3.0 \
-         @aztec/aztec.js@4.3.0 \
-         @aztec/wallets@4.3.0 \
-         @aztec/noir-contracts.js@4.3.0
+yarn add @aztec/accounts@5.0.0-rc.1 \
+         @aztec/aztec.js@5.0.0-rc.1 \
+         @aztec/wallets@5.0.0-rc.1 \
+         @aztec/noir-contracts.js@5.0.0-rc.1
 ```
 
 ### 3. Install Build Tooling Dependencies
@@ -199,7 +199,7 @@ const wallet = await EmbeddedWallet.create(aztecNode);
 import { getInitialTestAccountsData } from '@aztec/accounts/testing';
 
 const [accountData] = await getInitialTestAccountsData();
-const accountManager = await wallet.createSchnorrAccount(
+const accountManager = await wallet.createSchnorrInitializerlessAccount(
   accountData.secret,
   accountData.salt,
   accountData.signingKey
@@ -255,7 +255,7 @@ Check browser console - these headers must be present in the response.
 **Problem**: Cannot resolve Aztec packages or their dependencies.
 
 **Solution**:
-- Ensure all Aztec packages are on the **same version** (e.g., `4.3.0`)
+- Ensure all Aztec packages are on the **same version** (e.g., `5.0.0-rc.1`)
 - Verify WASM modules are excluded in `optimizeDeps.exclude`
 - Clear Vite cache: `rm -rf node_modules/.vite`
 
@@ -264,7 +264,7 @@ Check browser console - these headers must be present in the response.
 **Problem**: Application can't reach the Aztec sandbox.
 
 **Solution**:
-- Ensure Aztec sandbox is running: `aztec start --sandbox`
+- Ensure the Aztec local network is running: `aztec start --local-network`
 - Verify it's accessible at `http://localhost:8080`
 - Check CORS if sandbox is on a different port
 

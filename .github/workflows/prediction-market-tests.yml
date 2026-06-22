@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AZTEC_ENV: local-network
-      AZTEC_VERSION: 4.3.0
+      AZTEC_VERSION: 5.0.0-rc.1
 
     steps:
       - name: Checkout repository
@@ -29,10 +29,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.1.36
+      - name: Enable Corepack for Yarn
+        run: corepack enable
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -67,7 +65,7 @@ jobs:
 
       - name: Install project dependencies
         working-directory: prediction-market
-        run: bun install
+        run: yarn install
 
       - name: Run Noir unit tests
         working-directory: prediction-market
@@ -85,7 +83,7 @@ jobs:
 
       - name: Run end-to-end tests
         working-directory: prediction-market
-        run: bun test
+        run: yarn test
         timeout-minutes: 15
 
       - name: Upload test results if failed

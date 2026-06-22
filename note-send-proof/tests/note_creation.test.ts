@@ -10,8 +10,10 @@ import { GettingStartedContract } from '../contract/artifacts/GettingStarted.js'
 
 const NODE_URL = 'http://localhost:8080';
 
-// DOM_SEP__NOTE_HASH from Aztec protocol types (v4 value)
+// DOM_SEP__NOTE_HASH from Aztec protocol types (v5 value)
 const DOM_SEP__NOTE_HASH = 116501019;
+// DOM_SEP__PARTIAL_NOTE_COMMITMENT from Aztec protocol types (v5 value)
+const DOM_SEP__PARTIAL_NOTE_COMMITMENT = 568912195;
 
 // Must match NOTE_RANDOMNESS in the contract
 const NOTE_RANDOMNESS = new Fr(6969);
@@ -41,7 +43,7 @@ describe('Note Hash Computation Verification', () => {
     const accountsData = await getInitialTestAccountsData();
 
     // Create accounts using the wallet
-    const deployerAccount = await wallet.createSchnorrAccount(
+    const deployerAccount = await wallet.createSchnorrInitializerlessAccount(
       accountsData[0].secret,
       accountsData[0].salt,
       accountsData[0].signingKey
@@ -79,23 +81,24 @@ describe('Note Hash Computation Verification', () => {
 
     // Get the transaction effect to access the note hashes
     const node = createAztecNodeClient(NODE_URL);
-    const txEffect = await node.getTxEffect(receipt.txHash);
+    const txReceipt = await node.getTxReceipt(receipt.txHash, { includeTxEffect: true });
 
-    expect(txEffect).toBeDefined();
-    if (!txEffect) {
+    expect(txReceipt.isMined()).toBe(true);
+    if (!txReceipt.isMined() || !txReceipt.txEffect) {
       throw new Error('Cannot find txEffect from tx hash');
     }
+    const txEffect = txReceipt.txEffect;
 
-    // Compute the note hash:
-    // 1. commitment = poseidon2([owner, storage_slot, randomness], DOM_SEP__NOTE_HASH)
-    // 2. note_hash = poseidon2([commitment, value], DOM_SEP__NOTE_HASH)
+    // Compute the note hash (v5 partial-note pattern):
+    // 1. commitment = poseidon2([owner, randomness], DOM_SEP__PARTIAL_NOTE_COMMITMENT)
+    // 2. note_hash = poseidon2([storage_slot, commitment, value], DOM_SEP__NOTE_HASH)
     const commitment = await poseidon2HashWithSeparator(
-      [deployer.toField(), STORAGE_SLOT, NOTE_RANDOMNESS],
-      DOM_SEP__NOTE_HASH
+      [deployer.toField(), NOTE_RANDOMNESS],
+      DOM_SEP__PARTIAL_NOTE_COMMITMENT
     );
 
     const noteHash = await poseidon2HashWithSeparator(
-      [commitment, new Fr(NOTE_VALUE)],
+      [STORAGE_SLOT, commitment, new Fr(NOTE_VALUE)],
       DOM_SEP__NOTE_HASH
     );
 
@@ -103,17 +106,17 @@ describe('Note Hash Computation Verification', () => {
 
     // Compute the unique note hash (which is what gets stored on-chain)
     const INDEX_OF_NOTE_HASH_IN_TRANSACTION = 0;
-    const nonceGenerator = txEffect.data.nullifiers[0];
+    const nonceGenerator = txEffect.nullifiers[0];
     const noteHashNonce = await computeNoteHashNonce(nonceGenerator, INDEX_OF_NOTE_HASH_IN_TRANSACTION);
     const siloedNoteHash = await siloNoteHash(gettingStartedContract.address, noteHash);
     const computedUniqueNoteHash = await computeUniqueNoteHash(noteHashNonce, siloedNoteHash);
 
     console.log('Siloed note hash:', siloedNoteHash.toString());
     console.log('Computed unique note hash:', computedUniqueNoteHash.toString());
-    console.log('Actual on-chain note hash:', txEffect.data.noteHashes[0].toString());
+    console.log('Actual on-chain note hash:', txEffect.noteHashes[0].toString());
 
     // Verify the computed hash matches the on-chain hash
-    expect(computedUniqueNoteHash.toString()).toBe(txEffect.data.noteHashes[0].toString());
+    expect(computedUniqueNoteHash.toString()).toBe(txEffect.noteHashes[0].toString());
     console.log('✅ Hash verification successful!');
   }, TEST_TIMEOUT);
 
@@ -129,31 +132,32 @@ describe('Note Hash Computation Verification', () => {
 
     // Get the transaction effect
     const node = createAztecNodeClient(NODE_URL);
-    const txEffect = await node.getTxEffect(receipt.txHash);
-    expect(txEffect).toBeDefined();
-    if (!txEffect) {
+    const txReceipt = await node.getTxReceipt(receipt.txHash, { includeTxEffect: true });
+    expect(txReceipt.isMined()).toBe(true);
+    if (!txReceipt.isMined() || !txReceipt.txEffect) {
       throw new Error('Cannot find txEffect from tx hash');
     }
+    const txEffect = txReceipt.txEffect;
 
-    // Compute the note hash
+    // Compute the note hash (v5 partial-note pattern)
     const commitment = await poseidon2HashWithSeparator(
-      [deployer.toField(), STORAGE_SLOT, NOTE_RANDOMNESS],
-      DOM_SEP__NOTE_HASH
+      [deployer.toField(), NOTE_RANDOMNESS],
+      DOM_SEP__PARTIAL_NOTE_COMMITMENT
     );
 
     const noteHash = await poseidon2HashWithSeparator(
-      [commitment, new Fr(NOTE_VALUE)],
+      [STORAGE_SLOT, commitment, new Fr(NOTE_VALUE)],
       DOM_SEP__NOTE_HASH
     );
 
     // Compute unique hash
-    const nonceGenerator = txEffect.data.nullifiers[0];
+    const nonceGenerator = txEffect.nullifiers[0];
     const noteHashNonce = await computeNoteHashNonce(nonceGenerator, 0);
     const siloedNoteHash = await siloNoteHash(gettingStartedContract.address, noteHash);
     const computedUniqueNoteHash = await computeUniqueNoteHash(noteHashNonce, siloedNoteHash);
 
     // Verify
-    expect(computedUniqueNoteHash.toString()).toBe(txEffect.data.noteHashes[0].toString());
+    expect(computedUniqueNoteHash.toString()).toBe(txEffect.noteHashes[0].toString());
     console.log('✅ Hash verification successful for value', NOTE_VALUE.toString());
   }, TEST_TIMEOUT);
 });

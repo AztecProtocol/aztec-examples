@@ -9,7 +9,7 @@ pub contract PredictionMarket {
     use crate::lib::{calculate_shares_out, calculate_new_price, calculate_price_impact};
     use aztec::{
         macros::{functions::{external, initializer, only_self}, storage::storage},
-        messages::message_delivery::MessageDelivery,
+        messages::delivery::MessageDelivery,
         protocol::address::AztecAddress,
         state_vars::{PublicMutable, Owned, StateVariable},
     };
@@ -49,7 +49,7 @@ pub contract PredictionMarket {
         assert(amount > 0, "ZERO_AMOUNT");
         let sender = self.msg_sender();
         self.storage.collateral_balances.at(sender).add(amount)
-            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
+            .deliver(MessageDelivery::onchain_unconstrained());
     }
 
     /// Withdraw collateral privately. Consumes notes and returns change.
@@ -58,7 +58,7 @@ pub contract PredictionMarket {
         assert(amount > 0, "ZERO_AMOUNT");
         let sender = self.msg_sender();
         self.storage.collateral_balances.at(sender).sub(amount)
-            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
+            .deliver(MessageDelivery::onchain_unconstrained());
     }
 
     /// Buy YES or NO shares with full identity privacy.
@@ -72,7 +72,7 @@ pub contract PredictionMarket {
 
         // Consume collateral - sub handles note consumption and change
         self.storage.collateral_balances.at(sender).sub(collateral_amount)
-            .deliver(MessageDelivery.ONCHAIN_UNCONSTRAINED);
+            .deliver(MessageDelivery::onchain_unconstrained());
 
         // Create partial note for shares
         // Use get_storage_slot() from the Owned wrapper - it handles owner derivation internally

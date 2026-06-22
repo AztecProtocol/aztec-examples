@@ -1,17 +1,17 @@
-// Custom UintNote for v4 with controllable randomness for hash verification demos
+// Custom UintNote for v5 with controllable randomness for hash verification demos
 // Based on aztec-nr UintNote but with create_note_with_randomness function
 
 use aztec::{
     context::PrivateContext,
     keys::getters::{get_nhk_app, get_public_keys, try_get_public_keys},
     macros::notes::custom_note,
-    note::note_interface::{NoteHash, NoteType},
+    note::{note_interface::{NoteHash, NoteType}, utils::{compute_note_hash, compute_note_nullifier}},
     oracle::notes::notify_created_note,
     protocol::{
         address::AztecAddress,
-        constants::{DOM_SEP__NOTE_HASH, DOM_SEP__NOTE_NULLIFIER},
+        constants::DOM_SEP__PARTIAL_NOTE_COMMITMENT,
         hash::poseidon2_hash_with_separator,
-        traits::{Deserialize, Hash, Packable, Serialize, ToField},
+        traits::{Deserialize, Packable, Serialize, ToField},
     },
 };
 
@@ -31,17 +31,11 @@ impl NoteHash for UintNote {
         storage_slot: Field,
         randomness: Field,
     ) -> Field {
-        // Two-step hash matching partial note pattern:
-        // 1. commitment = poseidon2([owner, storage_slot, randomness], DOM_SEP__NOTE_HASH)
-        // 2. note_hash = poseidon2([commitment, value], DOM_SEP__NOTE_HASH)
-        let commitment = poseidon2_hash_with_separator(
-            [owner.to_field(), storage_slot, randomness],
-            DOM_SEP__NOTE_HASH,
-        );
-        poseidon2_hash_with_separator(
-            [commitment, self.value.to_field()],
-            DOM_SEP__NOTE_HASH,
-        )
+        // Two-step hash matching the partial note pattern:
+        // 1. commitment = poseidon2([owner, randomness], DOM_SEP__PARTIAL_NOTE_COMMITMENT)
+        // 2. note_hash = poseidon2([storage_slot, commitment, value], DOM_SEP__NOTE_HASH)
+        let commitment = compute_partial_commitment(owner, randomness);
+        compute_note_hash(storage_slot, [commitment, self.value.to_field()])
     }
 
     fn compute_nullifier(
@@ -50,13 +44,9 @@ impl NoteHash for UintNote {
         owner: AztecAddress,
         note_hash_for_nullification: Field,
     ) -> Field {
-        let owner_npk_m = get_public_keys(owner).npk_m;
-        let owner_npk_m_hash = owner_npk_m.hash();
+        let owner_npk_m_hash = get_public_keys(owner).npk_m_hash;
         let secret = context.request_nhk_app(owner_npk_m_hash);
-        poseidon2_hash_with_separator(
-            [note_hash_for_nullification, secret],
-            DOM_SEP__NOTE_NULLIFIER,
-        )
+        compute_note_nullifier(note_hash_for_nullification, [secret])
     }
 
     unconstrained fn compute_nullifier_unconstrained(
@@ -65,13 +55,9 @@ impl NoteHash for UintNote {
         note_hash_for_nullification: Field,
     ) -> Option<Field> {
         try_get_public_keys(owner).map(|public_keys| {
-            let owner_npk_m = public_keys.npk_m;
-            let owner_npk_m_hash = owner_npk_m.hash();
+            let owner_npk_m_hash = public_keys.npk_m_hash;
             let secret = get_nhk_app(owner_npk_m_hash);
-            poseidon2_hash_with_separator(
-                [note_hash_for_nullification, secret],
-                DOM_SEP__NOTE_NULLIFIER,
-            )
+            compute_note_nullifier(note_hash_for_nullification, [secret])
         })
     }
 }
@@ -80,6 +66,15 @@ impl UintNote {
     pub fn new(value: u128) -> Self {
         Self { value }
     }
+}
+
+/// Computes a commitment to the private content of a UintNote, i.e. the fields that remain private (owner and
+/// randomness). This matches the first step of the partial note hash computation.
+fn compute_partial_commitment(owner: AztecAddress, randomness: Field) -> Field {
+    poseidon2_hash_with_separator(
+        [owner.to_field(), randomness],
+        DOM_SEP__PARTIAL_NOTE_COMMITMENT,
+    )
 }
 
 /// Creates a note with a specified randomness value and pushes it to the note hash tree.

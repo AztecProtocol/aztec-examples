@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 4.3.0 to verify Noir proofs within smart contracts on the Aztec network.
+This is an Aztec-Noir project that demonstrates proof verification in Aztec contracts. It uses Aztec version 5.0.0-rc.1 to verify Noir proofs within smart contracts on the Aztec network.
 
 The project consists of:
 
@@ -29,7 +29,7 @@ aztec start --local-network
 
 ### Circuit Development
 
-Vanilla Noir circuits require `aztec-nargo` (version 1.0.0-beta.21, bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo`):
+Vanilla Noir circuits require `aztec-nargo` (version 1.0.0-beta.22, bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo`):
 
 ```bash
 # Compile the Noir circuit
@@ -72,7 +72,7 @@ yarn recursion
   - `constructor()`: Sets up counter with initial value for an owner and stores the VK hash
   - `increment()`: Verifies a Noir proof (reads VK hash from storage) and increments the counter
   - `get_counter()`: Reads current counter value for an owner
-- Uses `bb_proof_verification::verify_honk_proof` for proof verification (508 field elements for proof, 115 for verification key)
+- Uses `bb_proof_verification::verify_honk_proof` for proof verification (458 field elements for proof, 115 for verification key)
 - Stores VK hash in `PublicImmutable` storage (readable from private context)
 - Stores public counters per user using `PublicMutable` from Aztec-nr libraries
 

@@ -21,28 +21,23 @@ This is a collection of Aztec smart contract examples written in Noir, designed 
 
 ```
 aztec-examples/
-├── recursive_verification/  # Noir proof verification in Aztec contracts example
+├── custom-note/             # Defining a custom private note type
+├── note-send-proof/         # Off-chain note-hash proofs + Vite frontend
+│   ├── circuits/           # Vanilla Noir circuit (aztec-nargo)
+│   ├── uint-note/          # Local copy of the uint-note note library
+│   ├── sample-contract/    # Aztec contract under test
+│   ├── scripts/            # Proof/data generation (TypeScript)
+│   ├── tests/              # Jest integration tests
+│   └── vite/               # React frontend
+├── prediction-market/       # Private CSMM prediction market (uint-note partial notes)
+├── recursive_verification/  # Verify Noir UltraHonk proofs inside an Aztec contract
 │   ├── circuit/            # Noir circuit that generates proofs (proves x ≠ y)
-│   ├── contract/          # Aztec contract that verifies Noir proofs
-│   ├── scripts/           # TypeScript utilities for proof generation and deployment
-│   ├── tests/             # Integration test suite
-│   ├── data.json         # Generated proof data (created by `yarn data`)
-│   ├── README.md         # Comprehensive documentation
-│   ├── CLAUDE.md         # Project-specific AI guidance
-│   ├── EXPLAINER.md      # Technical deep-dive explanation
-│   └── run-tests.sh      # Local test runner script
-├── starter-token/          # Token contract example with start-here and reference implementations
-│   ├── start-here/        # Template for implementing a token
-│   │   ├── contract/      # Noir contract code
-│   │   ├── external-call-contract/  # Cross-contract calls
-│   │   └── ts/           # TypeScript client code
-│   └── reference/         # Complete reference implementation
-│       ├── contract/      # Full token implementation
-│       ├── external-call-contract/  # Cross-contract example
-│       └── ts/           # TypeScript client
-└── .github/              # CI/CD configuration
-    └── workflows/
-        └── recursive-verification-tests.yml  # Automated testing workflow
+│   ├── contract/           # Aztec contract that verifies Noir proofs
+│   ├── scripts/            # TypeScript utilities for proof generation and deployment
+│   ├── tests/              # Vitest integration test suite
+│   └── data.json           # Generated proof data (created by `yarn data`)
+├── test-wallet-webapp/      # Vite/React app: embedded wallet + deploy + tx
+└── .github/workflows/       # CI: one *-tests.yml per tested example
 ```
 
 ## Development Commands
@@ -54,7 +49,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 4.3.0  # For recursive_verification
+aztec-up 5.0.0-rc.1  # For recursive_verification
 ```
 
 ### Building Contracts
@@ -71,7 +66,7 @@ yarn ccc  # Compiles contract and generates TypeScript bindings
 
 ### Building Vanilla Noir Circuits
 
-The compatible `nargo` (version 1.0.0-beta.21) is bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo`. As of Aztec v4.3.0, bundled binaries are exposed only under their `aztec-` prefixed names — invoke `aztec-nargo` (a drop-in for `nargo`) rather than the bare name, which is no longer on `PATH`. Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
+The compatible `nargo` (version 1.0.0-beta.22) is bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo`. As of Aztec v4.3.0, bundled binaries are exposed only under their `aztec-` prefixed names — invoke `aztec-nargo` (a drop-in for `nargo`) rather than the bare name, which is no longer on `PATH`. Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
 
 ```bash
 # Verify nargo is available
@@ -177,22 +172,6 @@ yarn test
 cd circuit && aztec-nargo test
 ```
 
-### Starter Token Example
-
-```bash
-# Navigate to reference implementation
-cd starter-token/reference
-
-# Build the contract
-cd contract && aztec compile && cd ..
-
-# Build and run TypeScript client
-cd ts
-npm install
-npm run build
-npm start
-```
-
 ## Contract Architecture
 
 ### Aztec Contract Structure
@@ -216,18 +195,9 @@ The recursive verification example demonstrates:
 
 - **Off-chain proof generation**: Noir circuits compiled and executed with Barretenberg
 - **On-chain verification**: Using `bb_proof_verification::verify_honk_proof` in Aztec contracts
-- **UltraHonk proving system**: Generates proofs with 508 field elements, verification keys with 115 fields
+- **UltraHonk proving system**: Generates proofs with 458 field elements, verification keys with 115 fields
 - **VK Hash Storage**: Verification key hash stored in `PublicImmutable` storage, readable from private context
 - **Public state management**: Using `PublicMutable` for per-user counters
-
-### Token Pattern (starter-token)
-
-The token example showcases:
-
-- **Dual balance system**: Public and private token balances
-- **State management**: Using `PublicMutable` and `Map` for storage
-- **Access control**: Owner-based permissions for minting
-- **Cross-contract calls**: External contract interactions
 
 ### Testing Pattern
 
@@ -256,13 +226,13 @@ Aztec contracts specify dependencies in `Nargo.toml`:
 
 ```toml
 [dependencies]
-aztec = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "vX.X.X", directory = "noir-projects/aztec-nr/aztec" }
-easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/", tag = "vX.X.X", directory = "noir-projects/aztec-nr/easy-private-state" }
+aztec = { git = "https://github.com/AztecProtocol/aztec-nr/", tag = "v5.0.0-rc.1", directory = "aztec" }
+uint_note = { git = "https://github.com/AztecProtocol/aztec-nr/", tag = "v5.0.0-rc.1", directory = "uint-note" }
 ```
 
 **Version Compatibility**: All examples use the same Aztec version:
 
-- All examples: v4.3.0
+- All examples: v5.0.0-rc.1
 
 ### JavaScript/TypeScript Dependencies
 
@@ -276,32 +246,21 @@ TypeScript projects use:
 ### Runtime Requirements
 
 - **Node.js**: v22+ for all TypeScript examples
-- **yarn**: Package manager for recursive_verification example
-- **npm**: Package manager for starter-token example
+- **yarn**: Package manager used across the TypeScript examples
 - **Docker**: Required for running Aztec local network
 - **Memory**: 8GB+ RAM recommended for proof generation
 
 ## CI/CD
 
-The repository includes GitHub Actions workflows for automated testing:
+GitHub Actions workflows automatically test examples on pull requests to `next` (and pushes to `next`). Each tested example has its own workflow under `.github/workflows/`:
 
-### recursive-verification-tests.yml
+- `recursive-verification-tests.yml`
+- `prediction-market-tests.yml`
+- `note-send-proof-tests.yml`
+- `test-wallet-webapp-tests.yml`
+- `custom-note-tests.yml`
 
-Runs on:
-
-- Push to next branch
-- Pull requests modifying `recursive_verification/**`
-- Manual workflow dispatch
-
-Steps:
-
-1. Sets up Node.js (v22) and yarn
-2. Installs Aztec CLI
-3. Starts Aztec local network
-4. Compiles circuits and contracts
-5. Generates proof data
-6. Runs integration tests
-7. Uploads test artifacts on failure
+Each workflow installs the pinned Aztec CLI (`AZTEC_VERSION`), starts a local network when the example's tests need one, compiles circuits/contracts, and runs that example's tests (uploading logs on failure). The `custom-note` workflow is contract-only, so it just compiles.
 
 ## Common Issues and Solutions
 

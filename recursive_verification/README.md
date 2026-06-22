@@ -11,13 +11,13 @@ This project implements:
 - **Proof Generation**: Scripts to generate UltraHonk proofs using Barretenberg
 - **On-chain Verification**: Deployment and interaction scripts for proof verification on Aztec
 
-**Aztec Version**: `4.3.0`
+**Aztec Version**: `5.0.0-rc.1`
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v22 or higher) and [Yarn](https://yarnpkg.com/)
-- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 4.3.0)
-- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.21) - bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo` (a drop-in for `nargo`; the bare name is no longer on `PATH` as of Aztec v4.3.0)
+- [Aztec CLI](https://docs.aztec.network/getting_started/quickstart) (version 5.0.0-rc.1)
+- [Nargo](https://noir-lang.org/docs/getting_started/noir_installation/) (version 1.0.0-beta.22) - bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo` (a drop-in for `nargo`; the bare name is no longer on `PATH` as of Aztec v4.3.0)
 - Linux/macOS (Windows users can use WSL2)
 - 8GB+ RAM recommended for proof generation
 
@@ -62,18 +62,18 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 4.3.0
+aztec-up 5.0.0-rc.1
 ```
 
 This ensures compatibility with the contract dependencies.
 
 ### Nargo (for vanilla Noir circuits):
 
-The compatible `aztec-nargo` (version 1.0.0-beta.21) is bundled with the Aztec CLI:
+The compatible `aztec-nargo` (version 1.0.0-beta.22) is bundled with the Aztec CLI:
 
 ```bash
 ~/.aztec/current/bin/aztec-nargo --version
-# nargo version = 1.0.0-beta.21
+# nargo version = 1.0.0-beta.22
 ```
 
 Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
@@ -120,7 +120,7 @@ This runs `scripts/generate_data.ts` which:
 
 - Executes the circuit with inputs x=1, y=2
 - Generates an UltraHonk proof using Barretenberg
-- Saves proof data to `data.json` (508 field elements for proof, 115 for VK)
+- Saves proof data to `data.json` (458 field elements for proof, 115 for VK)
 
 ## Deploy and Verify On-Chain
 
@@ -165,7 +165,7 @@ For a fresh setup, run these commands in order:
 yarn install
 
 # 2. Setup Aztec
-aztec-up 4.3.0
+aztec-up 5.0.0-rc.1
 
 # 3. Verify aztec-nargo is available (bundled with Aztec CLI)
 ~/.aztec/current/bin/aztec-nargo --version

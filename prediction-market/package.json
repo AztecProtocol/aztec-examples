@@ -4,8 +4,8 @@
   "scripts": {
     "clean": "rm -rf target artifacts",
     "ccc": "aztec compile && aztec codegen target -o artifacts",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:noir": "aztec test"
   },
   "devDependencies": {
@@ -23,9 +23,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@aztec/accounts": "4.3.0",
-    "@aztec/aztec.js": "4.3.0",
-    "@aztec/pxe": "4.3.0",
-    "@aztec/wallets": "4.3.0"
+    "@aztec/accounts": "5.0.0-rc.1",
+    "@aztec/aztec.js": "5.0.0-rc.1",
+    "@aztec/pxe": "5.0.0-rc.1",
+    "@aztec/wallets": "5.0.0-rc.1"
   }
 }

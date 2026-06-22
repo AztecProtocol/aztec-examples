@@ -1,26 +1,26 @@
 # Note Hash Computation Verification
 
-A demonstration of creating private notes in Aztec smart contracts with controlled randomness, enabling verification that computed note hashes match on-chain note hashes. This project showcases the complete note hash computation chain in Aztec v3.
+A demonstration of creating private notes in Aztec smart contracts with controlled randomness, enabling verification that computed note hashes match on-chain note hashes. This project showcases the complete note hash computation chain in Aztec v5.
 
 ## Overview
 
 This project implements:
 
 - **Custom UintNote**: A note type with controllable randomness (default: 6969) for reproducible hash computation
-- **Note Hash Computation**: Scripts demonstrating the v3 note hash formula
+- **Note Hash Computation**: Scripts demonstrating the v5 note hash formula
 - **Hash Verification**: Tests that verify computed unique note hashes match on-chain hashes
 
-**Aztec Version**: `4.3.0`
+**Aztec Version**: `5.0.0-rc.1`
 
-## Note Hash Computation Formula (v3)
+## Note Hash Computation Formula (v5)
 
-The v3 note hash is computed in stages:
+The v5 note hash is computed in stages, following the partial-note pattern:
 
 ```
-1. commitment = poseidon2([owner, storage_slot, randomness], GENERATOR_INDEX__NOTE_HASH)
-2. note_hash = poseidon2([commitment, value], GENERATOR_INDEX__NOTE_HASH)
-3. siloed_note_hash = poseidon2([contract_address, note_hash], GENERATOR_INDEX__NOTE_HASH)
-4. unique_note_hash = poseidon2([nonce, siloed_note_hash], GENERATOR_INDEX__NOTE_HASH)
+1. commitment = poseidon2([owner, randomness], DOM_SEP__PARTIAL_NOTE_COMMITMENT)
+2. note_hash = poseidon2([storage_slot, commitment, value], DOM_SEP__NOTE_HASH)
+3. siloed_note_hash = poseidon2([contract_address, note_hash], DOM_SEP__SILOED_NOTE_HASH)
+4. unique_note_hash = poseidon2([nonce, siloed_note_hash], DOM_SEP__UNIQUE_NOTE_HASH)
 ```
 
 The unique note hash is what gets stored on-chain in the note hash tree.
@@ -35,7 +35,7 @@ The unique note hash is what gets stored on-chain in the note hash tree.
 To set the correct Aztec version:
 
 ```bash
-aztec-up 4.3.0
+aztec-up 5.0.0-rc.1
 ```
 
 ## Project Structure
@@ -77,7 +77,7 @@ bash -i <(curl -s https://install.aztec.network)
 ### Set Aztec to the correct version:
 
 ```bash
-aztec-up 4.3.0
+aztec-up 5.0.0-rc.1
 ```
 
 ## Build & Compile
@@ -114,7 +114,7 @@ yarn test
 The tests will:
 1. Deploy the GettingStarted contract
 2. Create a note with a known value and fixed randomness (6969)
-3. Compute the expected note hash using the v3 formula
+3. Compute the expected note hash using the v5 formula
 4. Verify that the computed hash matches the on-chain hash
 
 ## Complete Workflow
@@ -126,7 +126,7 @@ For a fresh setup, run these commands in order:
 yarn install
 
 # 2. Setup Aztec
-aztec-up 4.3.0
+aztec-up 5.0.0-rc.1
 
 # 3. Compile contract and generate TypeScript bindings
 yarn ccc
@@ -203,14 +203,14 @@ pub fn create_note_with_randomness<Note>(
 The test computes the same hash off-chain and verifies it matches:
 
 ```typescript
-// v3 hash computation
+// v5 hash computation (partial-note pattern)
 const commitment = await poseidon2HashWithSeparator(
-  [owner, storage_slot, randomness],
-  GENERATOR_INDEX__NOTE_HASH
+  [owner, randomness],
+  DOM_SEP__PARTIAL_NOTE_COMMITMENT
 );
 const noteHash = await poseidon2HashWithSeparator(
-  [commitment, value],
-  GENERATOR_INDEX__NOTE_HASH
+  [storage_slot, commitment, value],
+  DOM_SEP__NOTE_HASH
 );
 
 // Complete the chain: note_hash -> siloed -> unique
@@ -218,7 +218,8 @@ const siloedNoteHash = await siloNoteHash(contractAddress, noteHash);
 const uniqueNoteHash = await computeUniqueNoteHash(nonce, siloedNoteHash);
 
 // Verify against on-chain
-expect(uniqueNoteHash).toBe(txEffect.data.noteHashes[0]);
+const txReceipt = await node.getTxReceipt(txHash, { includeTxEffect: true });
+expect(uniqueNoteHash).toBe(txReceipt.txEffect.noteHashes[0]);
 ```
 
 ## Troubleshooting

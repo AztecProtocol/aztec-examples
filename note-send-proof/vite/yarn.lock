@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@aztec/bb.js@4.3.0":
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/@aztec/bb.js/-/bb.js-4.3.0.tgz#f5b5a7f8cdcd694955e8e7d0d08207398e1b586e"
-  integrity sha512-/MsqmXid2c6Mt5QUcWhjA9l2N0BmnGPDTmTjS5uco/2dS1CTNlDwsOSHw3SVY8yhFXCt7Beig5AFCXY/bhJmHg==
+"@aztec/bb.js@5.0.0-rc.1":
+  version "5.0.0-rc.1"
+  resolved "https://registry.yarnpkg.com/@aztec/bb.js/-/bb.js-5.0.0-rc.1.tgz#143b2a3b85263b488657f6ff79b42583147fefc3"
+  integrity sha512-YJlziTCaZrw4xNT6zm9MNBO1S8IGTVS0/JC8bzbPxszl49ACcS5shRiKl8s0orOEU6UEFspV/A/nKk2+QxH74A==
   dependencies:
     comlink "^4.4.1"
     commander "^12.1.0"
@@ -14,32 +14,32 @@
     pako "^2.1.0"
     tslib "^2.4.0"
 
-"@aztec/noir-acvm_js@4.3.0":
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-acvm_js/-/noir-acvm_js-4.3.0.tgz#201d077dce4a47e1cab92e6f0c30d70052a75f74"
-  integrity sha512-rsx2JLD605IaQrtUIpyqCISOidd84Rkk3yhz1G4T8l5hWgUj2oCudxqXiZWGau8xU5/a+uJolzXrv/E+pDkkWQ==
+"@aztec/noir-acvm_js@5.0.0-rc.1":
+  version "5.0.0-rc.1"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-acvm_js/-/noir-acvm_js-5.0.0-rc.1.tgz#22c3d5da40f0a1045a2f5c4723178728d4ad1f13"
+  integrity sha512-u6BYBVXSJ68pcoc5gUp+uwowO10kKXBIo4mQZqPGwz8QZcRzvhee+IB7aqSsQmSh0ckvXDPMpnpWT1NMUJQ3NQ==
 
-"@aztec/noir-noir_js@4.3.0":
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-noir_js/-/noir-noir_js-4.3.0.tgz#983a211a5b94b9ae26bd137e43e11c43b6ccc5c9"
-  integrity sha512-u1p8JnKGS9Yz4Gykd9fXcUnZhMA2zCyfuEOnTTJcmS8shLfa4YKK97X/oMVp4M6cX/je+ZoHtF+bQzbCk7MNAQ==
+"@aztec/noir-noir_js@5.0.0-rc.1":
+  version "5.0.0-rc.1"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-noir_js/-/noir-noir_js-5.0.0-rc.1.tgz#56f4ed262cc0cf302517cd770a865756bf74caf1"
+  integrity sha512-Wkzh8Mj/hFIrc+kuOg5wTIvwQxiojWbW+N6uFTj/DbKJj1mNW+XDg/tGQhvvQ39N6KpAl6ottcB2UxPkynUVbQ==
   dependencies:
-    "@aztec/noir-acvm_js" "4.3.0"
-    "@aztec/noir-noirc_abi" "4.3.0"
-    "@aztec/noir-types" "4.3.0"
+    "@aztec/noir-acvm_js" "5.0.0-rc.1"
+    "@aztec/noir-noirc_abi" "5.0.0-rc.1"
+    "@aztec/noir-types" "5.0.0-rc.1"
     pako "^2.1.0"
 
-"@aztec/noir-noirc_abi@4.3.0":
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-noirc_abi/-/noir-noirc_abi-4.3.0.tgz#5e50eccfa7550c850e570e59b465303fa32088cf"
-  integrity sha512-von8iaNsRq6D5qfgGwKjk0l1NKcLvKhlBdXxZ9bALi1wMixK4etC6EFsgNhKFxbrzc7V0tZD1fSLCUVoJJ3EyQ==
+"@aztec/noir-noirc_abi@5.0.0-rc.1":
+  version "5.0.0-rc.1"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-noirc_abi/-/noir-noirc_abi-5.0.0-rc.1.tgz#39ccd244b8592574c92268f094270e77ab95fec8"
+  integrity sha512-0O8Mjuq3HrT9ic1YGYOUPWpGPS+LBrlkOZjiM/53/xBjRYwCEDLHQtzxTO5ENSVtRBDEEKUc1M5tpdunlgUDZg==
   dependencies:
-    "@aztec/noir-types" "4.3.0"
+    "@aztec/noir-types" "5.0.0-rc.1"
 
-"@aztec/noir-types@4.3.0":
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-types/-/noir-types-4.3.0.tgz#17c5f31d43cd44ef1eaa0e4f7348aacdf6b600d7"
-  integrity sha512-E0PDXFU4QYigq0z42AK2gd3JPmmNyrqhqm7xFvT2S3d67/jmrXH1Z3GWrTcROq7dGsbLJssPT+QKl022IYn//w==
+"@aztec/noir-types@5.0.0-rc.1":
+  version "5.0.0-rc.1"
+  resolved "https://registry.yarnpkg.com/@aztec/noir-types/-/noir-types-5.0.0-rc.1.tgz#f2ab43fcb0d27e3bcbaacdb789c5ee6d1b4f618e"
+  integrity sha512-+fJVsNpLHP8EcuzWEnCsPhVmx73Mi0CdCCVlvPJVEvEqEcX/rzU1vUuhcIaBxAeCCpAji+eucC52zPOlYK6Xpw==
 
 "@esbuild/aix-ppc64@0.25.12":
   version "0.25.12"

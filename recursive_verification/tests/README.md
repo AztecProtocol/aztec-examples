@@ -1,6 +1,6 @@
 # Recursive Verification Tests
 
-This directory contains tests for the recursive verification proof system using Bun's built-in test runner.
+This directory contains tests for the recursive verification proof system using Vitest.
 
 ## Prerequisites
 
@@ -15,27 +15,27 @@ aztec start --local-network
 cd ../circuit && aztec-nargo compile && cd ..
 
 # Compile contract and generate TypeScript bindings
-bun ccc
+yarn ccc
 
 # Generate proof data (creates data.json)
-bun data
+yarn data
 ```
 
 ## Running Tests
 
 Run all tests:
 ```bash
-bun test
+yarn test
 ```
 
 Run tests in watch mode (re-runs on file changes):
 ```bash
-bun test:watch
+yarn vitest
 ```
 
 Run a specific test file:
 ```bash
-bun test recursive_verification.test.ts
+yarn vitest run recursive_verification.test.ts
 ```
 
 ## Test Coverage
@@ -52,8 +52,8 @@ The test suite covers:
 ## Test Structure
 
 Each test case:
-- Uses a 60-second timeout to accommodate proof verification time
-- Includes proper assertions using Bun's expect API
+- Uses a 10-minute timeout to accommodate proof generation/verification time
+- Includes proper assertions using Vitest's expect API
 - Logs important information for debugging
 - Handles async operations properly
 

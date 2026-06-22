@@ -92,7 +92,7 @@ const balance = await market.methods.get_collateral_balance(myAddress).simulate(
 ```bash
 # Install Aztec tools
 bash -i <(curl -s https://install.aztec.network)
-aztec-up 4.3.0
+aztec-up 5.0.0-rc.1
 
 # Install dependencies
 yarn install
@@ -124,8 +124,8 @@ Tests the CSMM pricing functions:
 #### End-to-End Tests
 
 ```bash
-# Start Aztec sandbox (in separate terminal)
-aztec start --sandbox
+# Start the Aztec local network (in separate terminal)
+aztec start --local-network
 
 # Run tests
 yarn test
