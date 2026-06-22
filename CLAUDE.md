@@ -261,8 +261,10 @@ GitHub Actions workflows automatically test examples on pull requests to `next` 
 - `prediction-market-tests.yml`
 - `note-send-proof-tests.yml`
 - `test-wallet-webapp-tests.yml`
+- `account-contract-tests.yml`
+- `custom-note-tests.yml`
 
-Each workflow installs the pinned Aztec CLI (`AZTEC_VERSION`), starts a local network when the example's tests need one, compiles circuits/contracts, and runs that example's tests (uploading logs on failure).
+Each workflow installs the pinned Aztec CLI (`AZTEC_VERSION`), starts a local network when the example's tests need one, compiles circuits/contracts, and runs that example's tests (uploading logs on failure). The `custom-note` workflow is contract-only, so it just compiles; the `account-contract` workflow compiles the contract and runs its deploy script against a local network as a smoke test.
 
 ## Common Issues and Solutions
 

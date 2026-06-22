@@ -1,0 +1,79 @@
+name: Account Contract Tests
+
+on:
+  push:
+    branches:
+      - next
+  pull_request:
+    branches:
+      - next
+    paths:
+      - "account-contract/**"
+      - ".github/workflows/account-contract-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  account-contract-tests:
+    name: Account Contract Tests
+    runs-on: ubuntu-latest
+    env:
+      AZTEC_ENV: local-network
+      AZTEC_VERSION: 5.0.0-rc.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable Corepack for Yarn
+        run: corepack enable
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install Aztec CLI
+        run: |
+          INSTALL_URL="https://install.aztec.network/${{ env.AZTEC_VERSION }}/"
+          curl -sL $INSTALL_URL > tmp.sh
+          VERSION=${{ env.AZTEC_VERSION }} bash tmp.sh <<< yes "yes"
+
+      - name: Update path
+        run: |
+          echo "$HOME/.aztec/current/bin" >> $GITHUB_PATH
+          echo "$HOME/.aztec/current/internal-bin" >> $GITHUB_PATH
+          echo "$HOME/.aztec/current/node_modules/.bin" >> $GITHUB_PATH
+          echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+
+      - name: Start local Aztec network
+        run: aztec start --local-network &
+
+      - name: Wait for local network to be ready
+        run: |
+          echo "Waiting for local network to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/status >/dev/null 2>&1; then
+              echo "Local network is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 5
+          done
+
+      - name: Install project dependencies
+        working-directory: account-contract
+        run: yarn install
+
+      - name: Compile account contract and generate artifact
+        working-directory: account-contract
+        run: |
+          ulimit -s unlimited
+          script -e -c "aztec compile"
+
+      - name: Deploy account contract (smoke test)
+        working-directory: account-contract
+        run: yarn deploy
+        timeout-minutes: 15
