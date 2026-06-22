@@ -41,7 +41,7 @@ function App() {
         return;
       }
 
-      const accountManager = await newWallet.createSchnorrAccount(accountData.secret, accountData.salt, accountData.signingKey);
+      const accountManager = await newWallet.createSchnorrInitializerlessAccount(accountData.secret, accountData.salt, accountData.signingKey);
       const accountAddress = accountManager.address;
 
       // Save wallet and address to state

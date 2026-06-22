@@ -34,21 +34,21 @@ describe("Prediction Market Contract - Full Privacy", () => {
     const accountsData = await getInitialTestAccountsData()
 
     // Create accounts using the wallet
-    const adminAccount = await wallet.createSchnorrAccount(
+    const adminAccount = await wallet.createSchnorrInitializerlessAccount(
       accountsData[0].secret,
       accountsData[0].salt,
       accountsData[0].signingKey
     )
     adminAddress = adminAccount.address
 
-    const aliceAccount = await wallet.createSchnorrAccount(
+    const aliceAccount = await wallet.createSchnorrInitializerlessAccount(
       accountsData[1].secret,
       accountsData[1].salt,
       accountsData[1].signingKey
     )
     aliceAddress = aliceAccount.address
 
-    const bobAccount = await wallet.createSchnorrAccount(
+    const bobAccount = await wallet.createSchnorrInitializerlessAccount(
       accountsData[2].secret,
       accountsData[2].salt,
       accountsData[2].signingKey

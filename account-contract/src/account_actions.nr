@@ -78,7 +78,7 @@ impl AccountActions<&mut PrivateContext> {
                 [app_payload.tx_nonce],
                 DOM_SEP__TX_NULLIFIER,
             );
-            self.context.push_nullifier(tx_nullifier);
+            self.context.push_nullifier_unsafe(tx_nullifier);
         }
     }
 

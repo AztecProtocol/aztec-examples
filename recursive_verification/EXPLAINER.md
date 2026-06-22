@@ -32,7 +32,7 @@ flowchart TB
     subgraph "3. Proof Generation"
         BYTECODE -->|Barretenberg| PROVER[UltraHonk Prover]
         INPUTS[Inputs: x=1, y=2] --> PROVER
-        PROVER -->|Generates| PROOF_DATA[Proof Data<br/>- Proof: 508 fields<br/>- VK: 115 fields<br/>- Public inputs]
+        PROVER -->|Generates| PROOF_DATA[Proof Data<br/>- Proof: 458 fields<br/>- VK: 115 fields<br/>- Public inputs]
         PROOF_DATA -->|Saved to| JSON[data.json]
     end
 
@@ -142,7 +142,7 @@ fn constructor(headstart: Field, owner: AztecAddress, vk_hash: Field)
 fn increment(
     owner: AztecAddress,
     verification_key: [Field; 115],
-    proof: [Field; 508],
+    proof: [Field; 458],
     public_inputs: [Field; 1]
 )
 
@@ -157,7 +157,7 @@ fn get_counter(owner: AztecAddress) -> Field
 **Size breakdown**:
 
 - **Verification Key**: 115 field elements (~3.7KB)
-- **Proof**: 508 field elements (~16.3KB)
+- **Proof**: 458 field elements (~14.7KB)
 - **Public Inputs**: 1 field element (the value of y)
 
 ## 📝 Step-by-Step Code Breakdown
@@ -199,7 +199,7 @@ const vkAsFields = await barretenbergAPI.acirVkAsFieldsUltraHonk(vk);
 fn increment(
     owner: AztecAddress,
     verification_key: [Field; HONK_VK_SIZE],  // 115 elements
-    proof: [Field; HONK_PROOF_SIZE],          // 508 elements
+    proof: [Field; HONK_PROOF_SIZE],          // 458 elements
     public_inputs: [Field; 1],                // Just 'y' value
 ) {
     // Read VK hash from storage (stored during contract initialization)

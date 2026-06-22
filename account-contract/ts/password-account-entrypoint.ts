@@ -1,8 +1,8 @@
 import { Fr } from '@aztec/aztec.js/fields';
 import type { AztecAddress } from '@aztec/aztec.js/addresses';
-import { type ContractArtifact, type FunctionAbi, FunctionSelector, encodeArguments, loadContractArtifact } from '@aztec/stdlib/abi';
+import { type ContractArtifact, type FunctionAbi, FunctionCall, FunctionSelector, encodeArguments, loadContractArtifact } from '@aztec/stdlib/abi';
 import type { GasSettings } from '@aztec/stdlib/gas';
-import { HashedValues, TxContext, TxExecutionRequest, type ExecutionPayload } from '@aztec/stdlib/tx';
+import { ExecutionPayload, HashedValues, TxContext, TxExecutionRequest } from '@aztec/stdlib/tx';
 import { CompleteAddress } from '@aztec/stdlib/contract';
 import { AuthWitness } from '@aztec/stdlib/auth-witness';
 import type { NoirCompiledContract } from '@aztec/stdlib/noir';
@@ -10,7 +10,7 @@ import type { NoirCompiledContract } from '@aztec/stdlib/noir';
 import type { AuthWitnessProvider, ChainInfo, EntrypointInterface } from '@aztec/entrypoints/interfaces';
 import { EncodedAppEntrypointCalls } from '@aztec/entrypoints/encoding';
 import type { DefaultAccountEntrypointOptions } from '@aztec/entrypoints/account';
-import type { AccountContract, AccountInterface } from '@aztec/aztec.js/account';
+import { type Account, type AccountContract, BaseAccount } from '@aztec/aztec.js/account';
 
 import PasswordAccountContractJson from '../target/custom_account-PasswordAccount.json' with { type: 'json' };
 
@@ -33,17 +33,69 @@ export class PasswordAccountEntrypoint implements EntrypointInterface {
     private address: AztecAddress,
     private auth: AuthWitnessProvider,
     private password: Fr,
-    private chainId: number = DEFAULT_CHAIN_ID,
-    private version: number = DEFAULT_VERSION,
   ) {}
 
   async createTxExecutionRequest(
     exec: ExecutionPayload,
     gasSettings: GasSettings,
+    chainInfo: ChainInfo,
     options: DefaultAccountEntrypointOptions,
   ): Promise<TxExecutionRequest> {
     // Initial request with calls, authWitnesses and capsules
-    const { calls, authWitnesses, capsules, extraHashedArgs } = exec;
+    const { authWitnesses, capsules, extraHashedArgs } = exec;
+    const { encodedCalls, entrypointHashedArgs, functionSelector, payloadAuthWitness } =
+      await this.#buildEntrypointCallData(exec, options);
+
+    // Assemble the tx request
+    const txRequest = TxExecutionRequest.from({
+      firstCallArgsHash: entrypointHashedArgs.hash,
+      origin: this.address,
+      functionSelector,
+      txContext: new TxContext(chainInfo.chainId.toNumber(), chainInfo.version.toNumber(), gasSettings),
+      argsOfCalls: [...encodedCalls.hashedArguments, entrypointHashedArgs, ...extraHashedArgs],
+      authWitnesses: [...authWitnesses, payloadAuthWitness],
+      capsules,
+      salt: Fr.random(),
+    });
+
+    return txRequest;
+  }
+
+  async wrapExecutionPayload(
+    exec: ExecutionPayload,
+    _chainInfo: ChainInfo,
+    options: DefaultAccountEntrypointOptions,
+  ): Promise<ExecutionPayload> {
+    const { authWitnesses, capsules, extraHashedArgs, feePayer } = exec;
+    const { encodedCalls, abi, entrypointArgs, functionSelector, payloadAuthWitness } =
+      await this.#buildEntrypointCallData(exec, options);
+
+    // Build the entrypoint function call
+    const entrypointCall = FunctionCall.from({
+      name: abi.name,
+      to: this.address,
+      selector: functionSelector,
+      type: abi.functionType,
+      hideMsgSender: false,
+      isStatic: abi.isStatic,
+      args: entrypointArgs,
+      returnTypes: abi.returnTypes,
+    });
+
+    return new ExecutionPayload(
+      [entrypointCall],
+      [payloadAuthWitness, ...authWitnesses],
+      capsules,
+      [...encodedCalls.hashedArguments, ...extraHashedArgs],
+      feePayer ?? this.address,
+    );
+  }
+
+  // Builds the data shared by createTxExecutionRequest and wrapExecutionPayload: the encoded app
+  // calls, the entrypoint args/selector, and the payload auth witness.
+  async #buildEntrypointCallData(exec: ExecutionPayload, options: DefaultAccountEntrypointOptions) {
+    // Initial request with calls, authWitnesses and capsules
+    const { calls } = exec;
     // Global tx options
     const { cancellable, txNonce, feePaymentMethodOptions } = options;
     // Encode the calls for the app
@@ -51,26 +103,15 @@ export class PasswordAccountEntrypoint implements EntrypointInterface {
 
     // Obtain the entrypoint hashed args, built from the app encoded calls and global options
     const abi = this.getEntrypointAbi();
-    const entrypointHashedArgs = await HashedValues.fromArgs(
-      encodeArguments(abi, [encodedCalls, feePaymentMethodOptions, !!cancellable, this.password]),
-    );
+    const entrypointArgs = encodeArguments(abi, [encodedCalls, feePaymentMethodOptions, !!cancellable, this.password]);
+    const entrypointHashedArgs = await HashedValues.fromArgs(entrypointArgs);
+
+    const functionSelector = await FunctionSelector.fromNameAndParameters(abi.name, abi.parameters);
 
     // Generate the payload auth witness, by signing the hash of the payload
-    const appPayloadAuthWitness = await this.auth.createAuthWit(await encodedCalls.hash());
+    const payloadAuthWitness = await this.auth.createAuthWit(await encodedCalls.hash());
 
-    // Assemble the tx request
-    const txRequest = TxExecutionRequest.from({
-      firstCallArgsHash: entrypointHashedArgs.hash,
-      origin: this.address,
-      functionSelector: await FunctionSelector.fromNameAndParameters(abi.name, abi.parameters),
-      txContext: new TxContext(this.chainId, this.version, gasSettings),
-      argsOfCalls: [...encodedCalls.hashedArguments, entrypointHashedArgs, ...extraHashedArgs],
-      authWitnesses: [...authWitnesses, appPayloadAuthWitness],
-      capsules,
-      salt: Fr.random(),
-    });
-
-    return txRequest;
+    return { encodedCalls, abi, entrypointArgs, entrypointHashedArgs, functionSelector, payloadAuthWitness };
   }
 
   private getEntrypointAbi() {
@@ -88,55 +129,17 @@ export class PasswordAccountEntrypoint implements EntrypointInterface {
   }
 }
 
-export class PasswordAccountInterface implements AccountInterface {
-  protected entrypoint: EntrypointInterface;
-
-  private chainId: Fr;
-  private version: Fr;
-
+export class PasswordAccountInterface extends BaseAccount {
   constructor(
-    private authWitnessProvider: AuthWitnessProvider,
-    private address: CompleteAddress,
-    chainInfo: ChainInfo,
-    private password: Fr,
+    authWitnessProvider: AuthWitnessProvider,
+    address: CompleteAddress,
+    password: Fr,
   ) {
-    this.entrypoint = new PasswordAccountEntrypoint(
-      address.address,
+    super(
+      new PasswordAccountEntrypoint(address.address, authWitnessProvider, password),
       authWitnessProvider,
-      this.password,
-      chainInfo.chainId.toNumber(),
-      chainInfo.version.toNumber(),
+      address,
     );
-    this.chainId = chainInfo.chainId;
-    this.version = chainInfo.version;
-  }
-
-  createTxExecutionRequest(
-    exec: ExecutionPayload,
-    gasSettings: GasSettings,
-    options: DefaultAccountEntrypointOptions,
-  ): Promise<TxExecutionRequest> {
-    return this.entrypoint.createTxExecutionRequest(exec, gasSettings, options);
-  }
-
-  createAuthWit(messageHash: Fr): Promise<AuthWitness> {
-    return this.authWitnessProvider.createAuthWit(messageHash);
-  }
-
-  getCompleteAddress(): CompleteAddress {
-    return this.address;
-  }
-
-  getAddress(): AztecAddress {
-    return this.address.address;
-  }
-
-  getChainId(): Fr {
-    return this.chainId;
-  }
-
-  getVersion(): Fr {
-    return this.version;
   }
 }
 
@@ -155,8 +158,14 @@ export class PasswordAccountContract implements AccountContract {
     return Promise.resolve(PasswordAccountContractArtifact);
   };
 
-  getInterface(address: CompleteAddress, chainInfo: ChainInfo): AccountInterface {
-    return new PasswordAccountInterface(this.getAuthWitnessProvider(address), address, chainInfo, this.password);
+  // This account has no immutables folded into its address (it is deployed via an on-chain
+  // initializer), so there is no immutables hash to commit.
+  getImmutablesHash(): Promise<Fr | undefined> {
+    return Promise.resolve(undefined);
+  }
+
+  getAccount(address: CompleteAddress): Account {
+    return new PasswordAccountInterface(this.getAuthWitnessProvider(address), address, this.password);
   }
 }
 

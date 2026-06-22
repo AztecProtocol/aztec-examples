@@ -54,7 +54,7 @@ aztec-examples/
 bash -i <(curl -s https://install.aztec.network)
 
 # Set specific version (examples may require different versions)
-aztec-up 4.3.0  # For recursive_verification
+aztec-up 5.0.0-rc.1  # For recursive_verification
 ```
 
 ### Building Contracts
@@ -71,7 +71,7 @@ yarn ccc  # Compiles contract and generates TypeScript bindings
 
 ### Building Vanilla Noir Circuits
 
-The compatible `nargo` (version 1.0.0-beta.21) is bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo`. As of Aztec v4.3.0, bundled binaries are exposed only under their `aztec-` prefixed names — invoke `aztec-nargo` (a drop-in for `nargo`) rather than the bare name, which is no longer on `PATH`. Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
+The compatible `nargo` (version 1.0.0-beta.22) is bundled with the Aztec CLI at `~/.aztec/current/bin/aztec-nargo`. As of Aztec v4.3.0, bundled binaries are exposed only under their `aztec-` prefixed names — invoke `aztec-nargo` (a drop-in for `nargo`) rather than the bare name, which is no longer on `PATH`. Ensure `~/.aztec/current/bin` is on your `PATH` (the Aztec installer adds this automatically).
 
 ```bash
 # Verify nargo is available
@@ -262,7 +262,7 @@ easy_private_state = { git = "https://github.com/AztecProtocol/aztec-packages/",
 
 **Version Compatibility**: All examples use the same Aztec version:
 
-- All examples: v4.3.0
+- All examples: v5.0.0-rc.1
 
 ### JavaScript/TypeScript Dependencies
 

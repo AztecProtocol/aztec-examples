@@ -71,9 +71,9 @@ const accountContractDeployMethod = DeployMethod.create(
     { salt: Fr.ONE, universalDeploy: true, publicKeys },
 );
 
-const { estimatedGas, stats } = await accountContractDeployMethod.simulate(deployAccountOpts);
+const { gasUsed, stats } = await accountContractDeployMethod.simulate({ ...deployAccountOpts, includeMetadata: true });
 
-console.log(estimatedGas);
+console.log(gasUsed);
 console.log(stats);
 
 const { contract: deployedAccountContract } = await accountContractDeployMethod.send(deployAccountOpts);
@@ -81,5 +81,5 @@ const { contract: deployedAccountContract } = await accountContractDeployMethod.
 console.log('PasswordAccount contract deployed at:', deployedAccountContract.address);
 
 // Create and register an account using the deployed contract
-const accountManager = await AccountManager.create(wallet, Fr.random(), passwordAccountContract, Fr.random());
+const accountManager = await AccountManager.create(wallet, Fr.random(), passwordAccountContract, { salt: Fr.random() });
 console.log('Account registered at:', accountManager.address.toString());
