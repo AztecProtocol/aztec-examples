@@ -54,7 +54,11 @@ const { contract: deployedAccountContract } = await deployMethod.send({
 
 console.log('PasswordAccount deployed at: ', deployedAccountContract.address.toString());
 console.log('Account registered at:       ', accountManager.address.toString());
-console.log(
-  'Deployed == registered:      ',
-  deployedAccountContract.address.equals(accountManager.address),
-);
+// The deployed contract IS the registered account (same secret key + salt), so the two must
+// match. Assert it (don't just log) so this doubles as a smoke test that fails loudly in CI.
+if (!deployedAccountContract.address.equals(accountManager.address)) {
+  throw new Error(
+    `Address mismatch: deployed ${deployedAccountContract.address.toString()} != registered ${accountManager.address.toString()}`,
+  );
+}
+console.log('Deployed == registered:       true');

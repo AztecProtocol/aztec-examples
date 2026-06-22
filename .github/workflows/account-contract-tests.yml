@@ -57,15 +57,17 @@ jobs:
           for i in {1..30}; do
             if curl -s http://localhost:8080/status >/dev/null 2>&1; then
               echo "Local network is ready!"
-              break
+              exit 0
             fi
             echo "Waiting... ($i/30)"
             sleep 5
           done
+          echo "Local network failed to become ready in time" >&2
+          exit 1
 
       - name: Install project dependencies
         working-directory: account-contract
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
       - name: Compile account contract and generate artifact
         working-directory: account-contract
