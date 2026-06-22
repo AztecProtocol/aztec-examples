@@ -42,8 +42,6 @@ Verifying Noir UltraHonk proofs _inside_ an Aztec contract: off-chain proof gene
 
 A minimal Vite/React app that connects to an embedded Aztec wallet/PXE, creates an initializerless Schnorr account, deploys a contract, and sends transactions.
 
-> `offchain-account-ownership/` and `streaming-payments/` are placeholders for upcoming examples.
-
 ## Quick Start
 
 ### Install Aztec Tools

@@ -38,8 +38,6 @@ aztec-examples/
 │   ├── tests/              # Vitest integration test suite
 │   └── data.json           # Generated proof data (created by `yarn data`)
 ├── test-wallet-webapp/      # Vite/React app: embedded wallet + deploy + tx
-├── offchain-account-ownership/  # Placeholder for an upcoming example
-├── streaming-payments/      # Placeholder for an upcoming example
 └── .github/workflows/       # CI: one *-tests.yml per tested example
 ```
 
