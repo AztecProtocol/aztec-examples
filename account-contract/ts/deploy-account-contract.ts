@@ -1,85 +1,60 @@
-import { AztecAddress } from '@aztec/aztec.js/addresses';
-import { NO_FROM } from '@aztec/aztec.js/account';
 import { Fr } from '@aztec/aztec.js/fields';
-import { SponsoredFeePaymentMethod } from '@aztec/aztec.js/fee';
-import { Contract, DeployMethod, type DeployOptions } from '@aztec/aztec.js/contracts';
-import { createAztecNodeClient } from '@aztec/aztec.js/node';
+import { Contract } from '@aztec/aztec.js/contracts';
+import { createAztecNodeClient, waitForNode } from '@aztec/aztec.js/node';
 import { deriveKeys } from '@aztec/aztec.js/keys';
-import { getContractInstanceFromInstantiationParams } from '@aztec/stdlib/contract';
-import { SponsoredFPCContractArtifact } from '@aztec/noir-contracts.js/SponsoredFPC';
-import { SPONSORED_FPC_SALT } from '@aztec/constants';
-import { PasswordAccountContract } from './password-account-entrypoint';
 import { EmbeddedWallet } from '@aztec/wallets/embedded';
 import { AccountManager } from '@aztec/aztec.js/wallet';
+import { getInitialTestAccountsData } from '@aztec/accounts/testing';
+import { PasswordAccountContract } from './password-account-entrypoint';
 
-async function getSponsoredPFCContract() {
-  const instance = await getContractInstanceFromInstantiationParams(
-    SponsoredFPCContractArtifact,
-    {
-      salt: new Fr(SPONSORED_FPC_SALT),
-    }
-  );
+const NODE_URL = 'http://localhost:8080';
+const PASSWORD = new Fr(123123123123);
 
-  return instance;
-}
+const node = await createAztecNodeClient(NODE_URL);
+await waitForNode(node);
+const wallet = await EmbeddedWallet.create(node, { ephemeral: true });
 
-const deployAccountOpts: DeployOptions = {
-  skipClassPublication: false,
-  skipInstancePublication: false,
-  skipInitialization: false,
-  from: NO_FROM,
-  fee: {
-    paymentMethod: new SponsoredFeePaymentMethod(
-      (await getSponsoredPFCContract()).address
-    ),
-  },
-};
+// A prefunded local-network test account acts as the deployer and pays the fee from its
+// fee-juice balance. We deploy the PasswordAccount as a normal contract (publishing its class +
+// instance and running its constructor) rather than self-deploying it: the account's entrypoint
+// authorizes a tx by reading the `hashed_password` PublicImmutable, which is only written by its
+// own constructor — so it cannot authorize its very first (self-deploy) tx.
+const [testAccount] = await getInitialTestAccountsData();
+const deployer = await wallet.createSchnorrInitializerlessAccount(
+  testAccount.secret,
+  testAccount.salt,
+  testAccount.signingKey,
+);
+console.log('Deployer (prefunded) address:', deployer.address.toString());
 
-const passwordAccountContract = new PasswordAccountContract(new Fr(123123123123));
+// The account's address derives from (public keys, salt, ctor args). Derive the keys from the
+// secret and reuse the same fixed salt everywhere so the address is deterministic and the
+// AccountManager registration below resolves to the deployed instance.
+const secretKey = Fr.random();
+const { publicKeys } = await deriveKeys(secretKey);
+const passwordAccountContract = new PasswordAccountContract(PASSWORD);
 const artifact = await passwordAccountContract.getContractArtifact();
 
-const { constructorName, constructorArgs } = await passwordAccountContract.getInitializationFunctionAndArgs();
+const accountManager = await AccountManager.create(wallet, secretKey, passwordAccountContract, {
+  salt: Fr.ONE,
+});
+console.log('PasswordAccount address:     ', accountManager.address.toString());
 
-console.log(constructorName, constructorArgs);
+// `universalDeploy` keeps the instance deployer at AztecAddress.ZERO (matching the
+// AccountManager-derived address); the funded test account still sends + pays for the tx.
+const deployMethod = Contract.deploy(wallet, artifact, [PASSWORD], 'constructor', {
+  salt: Fr.ONE,
+  publicKeys,
+  universalDeploy: true,
+});
+const { contract: deployedAccountContract } = await deployMethod.send({
+  from: deployer.address,
+  wait: { timeout: 120 },
+});
 
-const secretKey = Fr.random();
-// const salt = Fr.random();
-const { publicKeys } = await deriveKeys(secretKey);
-const wallet = await EmbeddedWallet.create(createAztecNodeClient('http://localhost:8080'), { ephemeral: true });
-
-// This doesn't work due to a strange bug in fee payment
-// const deployPasswordAccountMethod = new DeployAccountMethod(
-//   publicKeys,
-//   wallet,
-//   artifact,
-//   address => Contract.at(address, artifact, wallet),
-//   salt,
-//   constructorArgs,
-//   constructorName,
-// );
-
-await wallet.registerContract(await getSponsoredPFCContract(), SponsoredFPCContractArtifact);
-
-const accountContractDeployMethod = DeployMethod.create(
-    wallet,
-    {
-        artifact,
-        postDeployCtor: (instance, wallet) => Contract.at(instance.address, artifact, wallet),
-        args: constructorArgs,
-        constructorNameOrArtifact: constructorName,
-    },
-    { salt: Fr.ONE, universalDeploy: true, publicKeys },
+console.log('PasswordAccount deployed at: ', deployedAccountContract.address.toString());
+console.log('Account registered at:       ', accountManager.address.toString());
+console.log(
+  'Deployed == registered:      ',
+  deployedAccountContract.address.equals(accountManager.address),
 );
-
-const { gasUsed, stats } = await accountContractDeployMethod.simulate({ ...deployAccountOpts, includeMetadata: true });
-
-console.log(gasUsed);
-console.log(stats);
-
-const { contract: deployedAccountContract } = await accountContractDeployMethod.send(deployAccountOpts);
-
-console.log('PasswordAccount contract deployed at:', deployedAccountContract.address);
-
-// Create and register an account using the deployed contract
-const accountManager = await AccountManager.create(wallet, Fr.random(), passwordAccountContract, { salt: Fr.random() });
-console.log('Account registered at:', accountManager.address.toString());

@@ -753,14 +753,6 @@
   resolved "https://registry.yarnpkg.com/@aztec/noir-acvm_js/-/noir-acvm_js-5.0.0-rc.1.tgz#22c3d5da40f0a1045a2f5c4723178728d4ad1f13"
   integrity sha512-u6BYBVXSJ68pcoc5gUp+uwowO10kKXBIo4mQZqPGwz8QZcRzvhee+IB7aqSsQmSh0ckvXDPMpnpWT1NMUJQ3NQ==
 
-"@aztec/noir-contracts.js@5.0.0-rc.1":
-  version "5.0.0-rc.1"
-  resolved "https://registry.yarnpkg.com/@aztec/noir-contracts.js/-/noir-contracts.js-5.0.0-rc.1.tgz#a9d46c56cc30c69b01d1f8651901835faeb5c532"
-  integrity sha512-W2h5ep9+zmmVHeA9e2OaUZBbTIO1l3hOkVJ2fe5bDl1b7yqPsOIr8exEf1v+Jg0kUxN5/+ZeMu2QUKD88KzqVg==
-  dependencies:
-    "@aztec/aztec.js" "5.0.0-rc.1"
-    tslib "^2.4.0"
-
 "@aztec/noir-noir_codegen@5.0.0-rc.1":
   version "5.0.0-rc.1"
   resolved "https://registry.yarnpkg.com/@aztec/noir-noir_codegen/-/noir-noir_codegen-5.0.0-rc.1.tgz#f9d7118b0664f0e73791f21771802794a2c8edae"
