@@ -6,7 +6,7 @@ A collection of example Aztec smart contracts and circuits written in Noir, desi
 
 ## Overview
 
-This repository contains practical examples demonstrating various features of Aztec's zero-knowledge smart contract platform, from custom notes and account contracts to advanced proof verification patterns.
+This repository contains practical examples demonstrating various features of Aztec's zero-knowledge smart contract platform, from custom notes to advanced proof verification patterns.
 
 You can find additional examples in the Aztec monorepo [docs examples folder](https://github.com/AztecProtocol/aztec-packages/tree/next/docs/examples), including:
 
@@ -17,10 +17,6 @@ You can find additional examples in the Aztec monorepo [docs examples folder](ht
 ## Examples
 
 All examples target **Aztec v5.0.0-rc.1**.
-
-### [account-contract](./account-contract)
-
-A custom account contract whose authorization is a password (poseidon2 hash) check instead of a signature, plus TypeScript to deploy and transact through it. Demonstrates the v5 `AccountContract` / `Account` / entrypoint interfaces.
 
 ### [custom-note](./custom-note)
 
