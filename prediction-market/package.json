@@ -4,8 +4,8 @@
   "scripts": {
     "clean": "rm -rf target artifacts",
     "ccc": "aztec compile && aztec codegen target -o artifacts",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:noir": "aztec test"
   },
   "devDependencies": {

@@ -4,10 +4,10 @@ set -e
 echo "=== Prediction Market Contract Tests ==="
 echo ""
 
-# Check if sandbox is running
+# Check if the local network is running
 if ! curl -s http://localhost:8080/status >/dev/null 2>&1; then
-    echo "Error: Aztec sandbox is not running!"
-    echo "Please start it with: aztec start --sandbox"
+    echo "Error: Aztec local network is not running!"
+    echo "Please start it with: aztec start --local-network"
     exit 1
 fi
 
@@ -28,11 +28,11 @@ aztec codegen target -o artifacts
 
 echo ""
 echo "5. Installing dependencies..."
-bun install
+yarn install
 
 echo ""
 echo "6. Running end-to-end tests..."
-bun test
+yarn test
 
 echo ""
 echo "=== All tests passed! ==="

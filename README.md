@@ -6,7 +6,7 @@ A collection of example Aztec smart contracts and circuits written in Noir, desi
 
 ## Overview
 
-This repository contains practical examples demonstrating various features of Aztec's zero-knowledge smart contract platform, from basic token implementations to advanced proof verification patterns.
+This repository contains practical examples demonstrating various features of Aztec's zero-knowledge smart contract platform, from custom notes and account contracts to advanced proof verification patterns.
 
 You can find additional examples in the Aztec monorepo [docs examples folder](https://github.com/AztecProtocol/aztec-packages/tree/next/docs/examples), including:
 
@@ -16,25 +16,33 @@ You can find additional examples in the Aztec monorepo [docs examples folder](ht
 
 ## Examples
 
-### 1. [Recursive Verification](./recursive_verification)
+All examples target **Aztec v5.0.0-rc.1**.
 
-**Aztec Version**: 5.0.0-rc.1
+### [account-contract](./account-contract)
 
-Demonstrates how to verify Noir circuit proofs within Aztec smart contracts using the UltraHonk proving system. This example showcases:
+A custom account contract whose authorization is a password (poseidon2 hash) check instead of a signature, plus TypeScript to deploy and transact through it. Demonstrates the v5 `AccountContract` / `Account` / entrypoint interfaces.
 
-- Zero-knowledge proof generation from Noir circuits
-- On-chain proof verification in private smart contracts
-- Private state management using `EasyPrivateUint`
-- Integration between off-chain proving and on-chain verification
+### [custom-note](./custom-note)
 
-**Key features**:
+Defining a custom private note type with the `#[note]` macro and inserting it from a contract.
 
-- Circuit that proves two values are not equal (x ≠ y)
-- Smart contract that verifies proofs and maintains private counters
-- Comprehensive test suite and GitHub Actions CI/CD pipeline
-- TypeScript utilities for proof generation and contract deployment
+### [note-send-proof](./note-send-proof)
 
-[View README](./recursive_verification/README.md)
+Creating private notes and proving facts about their note hashes off-chain (with `bb.js` / `noir_js`), then verifying them on-chain. Includes a Vite/React frontend.
+
+### [prediction-market](./prediction-market)
+
+A private prediction market built on a constant-sum market maker (CSMM), using `uint_note` partial notes for private deposits, withdrawals, and outcome purchases.
+
+### [recursive_verification](./recursive_verification)
+
+Verifying Noir UltraHonk proofs _inside_ an Aztec contract: off-chain proof generation, on-chain verification with `bb_proof_verification::verify_honk_proof`, VK-hash storage in `PublicImmutable`, and per-user private counters.
+
+### [test-wallet-webapp](./test-wallet-webapp)
+
+A minimal Vite/React app that connects to an embedded Aztec wallet/PXE, creates an initializerless Schnorr account, deploys a contract, and sends transactions.
+
+> `offchain-account-ownership/` and `streaming-payments/` are placeholders for upcoming examples.
 
 ## Quick Start
 
@@ -63,7 +71,7 @@ Each example includes its own test suite:
 ```bash
 # Recursive Verification tests
 cd recursive_verification
-bun test
+yarn test
 
 # Run with CI-like environment
 ./run-tests.sh

@@ -34,13 +34,13 @@ A web application that demonstrates three core Aztec operations:
 yarn install
 ```
 
-### 2. Start Aztec Sandbox
+### 2. Start the Aztec Local Network
 
 ```bash
-aztec start --sandbox
+aztec start --local-network
 ```
 
-The sandbox must be running on `http://localhost:8080` before starting the app.
+The local network must be running on `http://localhost:8080` before starting the app.
 
 ### 3. Start Development Server
 
@@ -264,7 +264,7 @@ Check browser console - these headers must be present in the response.
 **Problem**: Application can't reach the Aztec sandbox.
 
 **Solution**:
-- Ensure Aztec sandbox is running: `aztec start --sandbox`
+- Ensure the Aztec local network is running: `aztec start --local-network`
 - Verify it's accessible at `http://localhost:8080`
 - Check CORS if sandbox is on a different port
 
