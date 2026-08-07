@@ -1,0 +1,8 @@
+target/
+artifacts/
+node_modules/
+*.log
+.DS_Store
+codegenCache.json
+data.json
+store/

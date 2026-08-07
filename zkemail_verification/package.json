@@ -1,0 +1,34 @@
+{
+  "name": "zkemail_verification",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf store",
+    "ccc": "cd contract && aztec compile && aztec codegen target -o artifacts",
+    "data": "tsx scripts/generate_data.ts",
+    "verify": "tsx scripts/run_verification.ts",
+    "testnet": "tsx scripts/run_testnet.ts",
+    "test": "yarn clean && vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@aztec/accounts": "4.2.0-aztecnr-rc.2",
+    "@aztec/aztec.js": "4.2.0-aztecnr-rc.2",
+    "@aztec/bb.js": "4.2.0-aztecnr-rc.2",
+    "@aztec/kv-store": "4.2.0-aztecnr-rc.2",
+    "@aztec/noir-contracts.js": "4.2.0-aztecnr-rc.2",
+    "@aztec/noir-noir_js": "4.2.0-aztecnr-rc.2",
+    "@aztec/pxe": "4.2.0-aztecnr-rc.2",
+    "@aztec/wallets": "4.2.0-aztecnr-rc.2",
+    "@aztec/stdlib": "4.2.0-aztecnr-rc.2",
+    "tsx": "^4.20.6"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}
