@@ -1,0 +1,27 @@
+{
+  "name": "streaming-payments",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf target artifacts .deps",
+    "setup": "./scripts/setup-token.sh",
+    "compile": "aztec compile && aztec codegen target -o artifacts",
+    "build": "yarn setup && yarn compile",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.integration.config.json",
+    "test:noir": "aztec test"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^22.15.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.4"
+  },
+  "dependencies": {
+    "@aztec/accounts": "3.0.0-devnet.20251212",
+    "@aztec/aztec.js": "3.0.0-devnet.20251212",
+    "@aztec/pxe": "3.0.0-devnet.20251212",
+    "@aztec/stdlib": "3.0.0-devnet.20251212",
+    "@aztec/test-wallet": "3.0.0-devnet.20251212"
+  }
+}

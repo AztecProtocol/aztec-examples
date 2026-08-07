@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "contracts/streaming_payments",
+    ".deps/token_contract",
+]
