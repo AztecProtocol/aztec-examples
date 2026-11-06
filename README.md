@@ -1,3 +1,6 @@
+> [!WARNING]
+> **This repository targets Aztec v5 and is no longer maintained.** It does not work with Aztec v6 or later. For current tutorials and examples, start at [docs.aztec.network](https://docs.aztec.network/developers/overview).
+
 # Aztec Examples
 
 A collection of example Aztec smart contracts and circuits written in Noir, designed for hands-on learning of the Aztec privacy-first Layer 2 blockchain.
